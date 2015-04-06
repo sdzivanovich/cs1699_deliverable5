@@ -20,7 +20,7 @@
 -- NOTE: This code was adapted from the GHC.List module specified above.
 -- All licensing remains as specified above. 
 
-module List (
+module MyList (
    -- [] (..),          -- built-in syntax; can't be used in export list
 
    map, (++), filter, concat,
