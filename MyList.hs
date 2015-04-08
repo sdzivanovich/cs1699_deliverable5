@@ -25,6 +25,7 @@ module MyList (
 
    map, (++), filter, concat,
    head, last, tail, init, uncons, null, length, (!!),
+   intersperse, intercalate, transpose, subsequences, permutations,
    foldl, foldl', foldl1, foldl1', scanl, scanl1, scanl', foldr, foldr1,
    scanr, scanr1, iterate, repeat, replicate, cycle,
    take, drop, sum, product, maximum, minimum, splitAt, takeWhile, dropWhile,
@@ -706,6 +707,90 @@ reverse l =  rev l []
     rev []     a = a
     rev (x:xs) a = rev xs (x:a)
 #endif
+
+-- | The 'subsequences' function returns the list of all subsequences of the argument.
+--
+-- > subsequences "abc" == ["","a","b","ab","c","ac","bc","abc"]
+subsequences            :: [a] -> [[a]]
+subsequences xs         =  [] : nonEmptySubsequences xs
+
+-- | The 'nonEmptySubsequences' function returns the list of all subsequences of the argument,
+--   except for the empty list.
+--
+-- > nonEmptySubsequences "abc" == ["a","b","ab","c","ac","bc","abc"]
+nonEmptySubsequences         :: [a] -> [[a]]
+nonEmptySubsequences []      =  []
+nonEmptySubsequences (x:xs)  =  [x] : foldr f [] (nonEmptySubsequences xs)
+  where f ys r = ys : (x : ys) : r
+
+
+-- | The 'permutations' function returns the list of all permutations of the argument.
+--
+-- > permutations "abc" == ["abc","bac","cba","bca","cab","acb"]
+permutations            :: [a] -> [[a]]
+permutations xs0        =  xs0 : perms xs0 []
+  where
+    perms []     _  = []
+    perms (t:ts) is = foldr interleave (perms ts (t:is)) (permutations is)
+      where interleave    xs     r = let (_,zs) = interleave' id xs r in zs
+            interleave' _ []     r = (ts, r)
+            interleave' f (y:ys) r = let (us,zs) = interleave' (f . (y:)) ys r
+                                     in  (y:us, f (t:y:us) : zs)
+
+
+-- | The 'intersperse' function takes an element and a list and
+-- \`intersperses\' that element between the elements of the list.
+-- For example,
+--
+-- > intersperse ',' "abcde" == "a,b,c,d,e"
+
+intersperse             :: a -> [a] -> [a]
+intersperse _   []      = []
+intersperse sep (x:xs)  = x : prependToAll sep xs
+
+
+-- Not exported:
+-- We want to make every element in the 'intersperse'd list available
+-- as soon as possible to avoid space leaks. Experiments suggested that
+-- a separate top-level helper is more efficient than a local worker.
+prependToAll            :: a -> [a] -> [a]
+prependToAll _   []     = []
+prependToAll sep (x:xs) = sep : x : prependToAll sep xs
+
+-- | 'intercalate' @xs xss@ is equivalent to @('concat' ('intersperse' xs xss))@.
+-- It inserts the list @xs@ in between the lists in @xss@ and concatenates the
+-- result.
+intercalate :: [a] -> [[a]] -> [a]
+intercalate xs xss = concat (intersperse xs xss)
+
+-- | The 'transpose' function transposes the rows and columns of its argument.
+-- For example,
+--
+-- > transpose [[1,2,3],[4,5,6]] == [[1,4],[2,5],[3,6]]
+--
+-- If some of the rows are shorter than the following rows, their elements are skipped:
+--
+-- > transpose [[10,11],[20],[],[30,31,32]] == [[10,20,30],[11,31],[32]]
+
+transpose               :: [[a]] -> [[a]]
+transpose []             = []
+transpose ([]   : xss)   = transpose xss
+transpose ((x:xs) : xss) = (x : [h | (h:_) <- xss]) : transpose (xs : [ t | (_:t) <- xss])
+
+
+-- | The 'partition' function takes a predicate a list and returns
+-- the pair of lists of elements which do and do not satisfy the
+-- predicate, respectively; i.e.,
+--
+-- > partition p xs == (filter p xs, filter (not . p) xs)
+
+partition               :: (a -> Bool) -> [a] -> ([a],[a])
+{-# INLINE partition #-}
+partition p xs = foldr (select p) ([],[]) xs
+
+select :: (a -> Bool) -> a -> ([a], [a]) -> ([a], [a])
+select p x ~(ts,fs) | p x       = (x:ts,fs)
+                    | otherwise = (ts, x:fs)
 
 -- | 'and' returns the conjunction of a Boolean list.  For the result to be
 -- 'True', the list must be finite; 'False', however, results from a 'False'
