@@ -10,7 +10,15 @@ data NamedProp a = NamedProp String a
 labeledCheck :: Testable prop => NamedProp prop -> IO ()
 labeledCheck (NamedProp s p) = do
     putStrLn s
-    quickCheckWith stdArgs { maxSuccess = 500 } p 
+    quickCheckWith stdArgs { maxSuccess = 200 } p 
+
+-- Haskell doesn't have factorial built in :(
+factorial :: (Integral a) => a -> a
+factorial 0 = 1
+factorial 1 = 1
+factorial n 
+    | n < 0     = error "n must be nonnegative"
+    | otherwise = n * factorial (n - 1)
 
 
 ---- (++) properties ----
@@ -134,6 +142,64 @@ prop_reverseIsReverse xs =  let revXs   = My.reverse xs
                                 len     = My.length xs 
                             in  and . My.map (\i -> xs My.!! i == revXs My.!! (len - i - 1)) $ [0..len - 1]
 
+---- intersperse properties ----
+
+prop_intersperseLengthSingletonOrNull :: Int -> [Int] -> Property
+prop_intersperseLengthSingletonOrNull x xs = (My.intersperse x xs == xs) ==> My.null xs || My.length xs == 1
+
+prop_intersperseLengthGeneral :: Int -> [Int] -> Property
+prop_intersperseLengthGeneral x xs = not (My.null xs || My.length xs == 1) ==> My.length (My.intersperse x xs) == My.length xs + My.length xs - 1
+
+prop_intersperseStructure :: Int -> Int -> Int -> Bool 
+prop_intersperseStructure x y z = My.intersperse y [x, z] == [x, y, z]
+
+---- intercalate properties ----
+
+prop_intercalateIdentity :: [Int] -> [[Int]] -> Bool
+prop_intercalateIdentity x xs = My.intercalate x xs == My.concat (My.intersperse x xs)
+
+
+---- transpose properties ----
+
+-- TODO: this fails for [[]]
+prop_transposeTransposeIsOriginal :: [[Int]] -> Bool 
+prop_transposeTransposeIsOriginal xs = (My.transpose . My.transpose $ xs) == xs
+
+
+---- subsequences properties ----
+
+prop_subsequencesLength :: [Int] -> Bool 
+prop_subsequencesLength xs = length (My.subsequences xs) == 2 ^ (length xs)
+
+prop_subsequencesContainsEmptyList :: [Int] -> Bool 
+prop_subsequencesContainsEmptyList xs = [] `My.elem` My.subsequences xs
+
+prop_subsequencesContainsOriginal:: [Int] -> Bool 
+prop_subsequencesContainsOriginal xs = xs `My.elem` My.subsequences xs
+
+
+---- permutations properties ----
+
+prop_permutationsLength :: [Int] -> Bool 
+prop_permutationsLength xs = My.length (My.permutations xs) == factorial (My.length xs)
+
+prop_permutationsContainsOriginal :: [Int] -> Bool 
+prop_permutationsContainsOriginal xs = xs `My.elem` My.permutations xs
+
+--TODO
+--prop_permutationsHaveSamePermutations :: [Int] -> Bool 
+--prop_permutationsHaveSamePermutations xs =  let perms = My.permutations xs
+--                                                permsOfPerms = My.map My.permutations perms
+--                                            in My.all ( == perms) permsOfPerms
+
+---- foldl properties ----
+
+---- foldl1 properties ----
+
+---- foldr properties ----
+
+---- foldr1 properties ----
+
 
 
 
@@ -162,3 +228,15 @@ main = do
     labeledCheck (NamedProp "prop_reverseReverseIsOriginal" prop_reverseReverseIsOriginal)
     labeledCheck (NamedProp "prop_reverseLength" prop_reverseLength)
     labeledCheck (NamedProp "prop_reverseIsReverse" prop_reverseIsReverse)
+    labeledCheck (NamedProp "prop_intersperseLengthSingletonOrNull" prop_intersperseLengthSingletonOrNull)
+    labeledCheck (NamedProp "prop_intersperseLengthGeneral" prop_intersperseLengthGeneral)
+    labeledCheck (NamedProp "prop_intersperseStructure" prop_intersperseStructure)
+    labeledCheck (NamedProp "prop_intercalateIdentity" prop_intercalateIdentity)
+    labeledCheck (NamedProp "prop_transposeTransposeIsOriginal" prop_transposeTransposeIsOriginal)
+    -- TODO: constrain length of input somehow
+    --labeledCheck (NamedProp "prop_subsequencesLength" prop_subsequencesLength)
+    labeledCheck (NamedProp "prop_subsequencesContainsEmptyList" prop_subsequencesContainsEmptyList)
+    --labeledCheck (NamedProp "prop_subsequencesContainsOriginal" prop_subsequencesContainsOriginal)
+    --labeledCheck (NamedProp "prop_permutationsLength" prop_permutationsLength)
+    --labeledCheck (NamedProp "prop_permutationsContainsOriginal" prop_permutationsContainsOriginal)
+    --labeledCheck (NamedProp "prop_permutationsHaveSamePermutations" prop_permutationsHaveSamePermutations)

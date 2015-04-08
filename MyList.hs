@@ -26,7 +26,7 @@ module MyList (
    map, (++), filter, concat,
    head, last, tail, init, uncons, null, length, (!!),
    intersperse, intercalate, transpose, subsequences, permutations,
-   foldl, foldl', foldl1, foldl1', scanl, scanl1, scanl', foldr, foldr1,
+   foldl, foldl1, scanl, scanl1, scanl', foldr, foldr1,
    scanr, scanr1, iterate, repeat, replicate, cycle,
    take, drop, sum, product, maximum, minimum, splitAt, takeWhile, dropWhile,
    span, break, reverse, and, or,
