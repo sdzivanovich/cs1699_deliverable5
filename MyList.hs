@@ -26,7 +26,7 @@ module MyList (
    map, (++), filter, concat,
    head, last, tail, init, uncons, null, length, (!!),
    intersperse, intercalate, transpose, subsequences, permutations,
-   foldl, foldl1, scanl, scanl1, scanl', foldr, foldr1,
+   foldl, foldl1, scanl, scanl1, foldr, foldr1,
    scanr, scanr1, iterate, repeat, replicate, cycle,
    take, drop, sum, product, maximum, minimum, splitAt, takeWhile, dropWhile,
    span, break, reverse, and, or,
@@ -285,35 +285,6 @@ constScanl = const
 scanl1                  :: (a -> a -> a) -> [a] -> [a]
 scanl1 f (x:xs)         =  scanl f x xs
 scanl1 _ []             =  []
-
--- | A strictly accumulating version of 'scanl'
-{-# NOINLINE [1] scanl' #-}
-scanl'           :: (b -> a -> b) -> b -> [a] -> [b]
--- This peculiar form is needed to prevent scanl' from being rewritten
--- in its own right hand side.
-scanl' = scanlGo'
-  where
-    scanlGo'           :: (b -> a -> b) -> b -> [a] -> [b]
-    scanlGo' f !q ls    = q : (case ls of
-                            []   -> []
-                            x:xs -> scanlGo' f (f q x) xs)
-
--- Note [scanl rewrite rules]
-{-# RULES
-"scanl'"  [~1] forall f a bs . scanl' f a bs =
-  build (\c n -> a `c` foldr (scanlFB' f c) (flipSeqScanl' n) bs a)
-"scanlList'" [1] forall f a bs .
-    foldr (scanlFB' f (:)) (flipSeqScanl' []) bs a = tail (scanl' f a bs)
- #-}
-
-{-# INLINE [0] scanlFB' #-}
-scanlFB' :: (b -> a -> b) -> (b -> c -> c) -> a -> (b -> c) -> b -> c
-scanlFB' f c = \b g -> (\x -> let !b' = f x b in b' `c` g b')
-  -- See Note [Left folds via right fold]
-
-{-# INLINE [0] flipSeqScanl' #-}
-flipSeqScanl' :: a -> b -> a
-flipSeqScanl' a !_b = a
 
 {-
 Note [scanl rewrite rules]
