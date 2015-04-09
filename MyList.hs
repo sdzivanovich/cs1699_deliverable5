@@ -30,7 +30,7 @@ module MyList (
    scanr, scanr1, iterate, repeat, replicate, cycle,
    take, drop, sum, product, maximum, minimum, splitAt, takeWhile, dropWhile,
    span, break, reverse, and, or,
-   any, all, elem, notElem, lookup,
+   elem, notElem, lookup,
    concatMap,
    zip, zip3, zipWith, zipWith3, unzip, unzip3,
    errorEmptyList,
