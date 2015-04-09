@@ -285,8 +285,8 @@ prop_orOfSingleValueIsItself b = My.or [b] == b
 ---- sum properties ----
 
 -- summing a number x repeated n times is n * x.
-prop_sumOfRepeatedNumber :: Int -> Int -> Bool 
-prop_sumOfRepeatedNumber n x = My.sum (My.replicate n x) == n * x
+prop_sumOfRepeatedNumber :: Int -> Int -> Property 
+prop_sumOfRepeatedNumber n x = n >= 0 ==> My.sum (My.replicate n x) == n * x
 
 -- summing the numbers 1..n = n * (n + 1) / 2.
 prop_sumOfOneToN :: Int -> Property
@@ -295,8 +295,8 @@ prop_sumOfOneToN n = n > 0 ==> 2 * My.sum ([1..n]) == n * (n + 1)
 ---- product properties ----
 
 -- multiplying a number x for n times is x ^ n.
-prop_productOfRepeatedNumber :: Int -> Int -> Bool 
-prop_productOfRepeatedNumber n x = My.product (My.replicate n x) == x ^ n
+prop_productOfRepeatedNumber :: Int -> Int -> Property 
+prop_productOfRepeatedNumber n x = n >= 0 ==> My.product (My.replicate n x) == x ^ n
 
 -- product of 1..n is n!. 
 prop_productOfOneToN :: Int -> Property
