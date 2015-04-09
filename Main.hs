@@ -22,19 +22,19 @@ factorial n
 
 ---- (++) properties ----
 
--- Length of a concatenation is the sum of the length of both pieces
+-- Length of a concatenation is the sum of the length of both pieces.
 prop_ConcatLength :: [Int] -> [Int] -> Bool 
 prop_ConcatLength xs ys = My.length xs + My.length ys == My.length (xs My.++ ys)
 
--- Empty list concatenated with another list is the other list
+-- Empty list concatenated with another list is the other list.
 prop_ConcatRhsEmpty :: [Int] -> Bool
 prop_ConcatRhsEmpty ys = ([] My.++ ys) == ys
 
--- A list concatenated with the empty list is itself
+-- A list concatenated with the empty list is itself.
 prop_ConcatLhsEmpty :: [Int] -> Bool 
 prop_ConcatLhsEmpty xs = (xs My.++ []) == xs
 
--- First list follows the second in a concatenation
+-- First list follows the second in a concatenation.
 prop_ConcatStructure :: [Int] -> [Int] -> Bool 
 prop_ConcatStructure xs ys =    let n       = My.length xs 
                                     (a, b)  = My.splitAt n (xs My.++ ys)
@@ -42,39 +42,39 @@ prop_ConcatStructure xs ys =    let n       = My.length xs
 
 ---- head properties ----
 
--- head of a singleton list is the single element
+-- head of a singleton list is the single element.
 prop_HeadSingleElement :: Int -> Bool
 prop_HeadSingleElement x = My.head [x] == x 
 
--- head of a list is the first element
+-- head of a list is the first element.
 prop_HeadIsFirstElement :: Int -> [Int] -> Bool 
 prop_HeadIsFirstElement x xs = head (x:xs) == x
 
 ---- tail properties ----
 
--- tail of a singleton list is the single element
+-- tail of a singleton list is the single element.
 prop_TailSingleElement :: Int -> Bool 
 prop_TailSingleElement x = My.tail [x] == []
 
--- length of the tail of a list is length of the list minus 1
+-- length of the tail of a list is length of the list minus 1.
 prop_TailMultipleElements :: [Int] -> Property 
 prop_TailMultipleElements xs = not (My.null xs) ==> My.length (My.tail xs) == My.length xs - 1
 
--- tail of a list is everything except for the first element
+-- tail of a list is everything except for the first element.
 prop_TailRemovesFirstElement :: Int -> [Int] -> Bool 
 prop_TailRemovesFirstElement x xs = My.tail (x:xs) == xs 
 
 ---- init properties ----
 
--- init of a singleton list is the empty list
+-- init of a singleton list is the empty list.
 prop_InitSingleElement :: Int -> Bool 
 prop_InitSingleElement x = My.init [x] == []
 
--- init of a list is everything except for the last element
+-- init of a list is everything except for the last element.
 prop_InitIsFirstElements :: [Int] -> Int -> Bool 
 prop_InitIsFirstElements xs x = My.init (xs My.++ [x]) == xs 
 
--- length of the init of a list is equal to the length of the list minus 1
+-- length of the init of a list is equal to the length of the list minus 1.
 prop_LengthInitList :: [Int] -> Property 
 prop_LengthInitList xs = not (My.null xs) ==> My.length (My.init xs) == My.length xs - 1
 
@@ -91,25 +91,25 @@ prop_UnconsEmptyList = My.uncons ([] :: [Int]) == Nothing
 
 ---- null properties ----
 
--- if a list has length > 0, it is not null
+-- if a list has length > 0, it is not null.
 prop_NonEmptyListsNotNull :: [Int] -> Property 
 prop_NonEmptyListsNotNull xs = My.length xs > 0 ==> not . My.null $ xs
 
--- if a list is not null, it has a length greater than 0
+-- if a list is not null, it has a length greater than 0.
 prop_NonNullListsNotEmpty :: [Int] -> Property
 prop_NonNullListsNotEmpty xs = not (My.null xs) ==> My.length xs > 0
 
 ---- length properties ----
 
--- length of the empty list is 0
+-- length of the empty list is 0.
 prop_LengthEmptyList :: Bool
 prop_LengthEmptyList = My.length [] == 0
 
--- length of the singleton list is 1
+-- length of the singleton list is 1.
 prop_LengthSingletonList :: Int -> Bool
 prop_LengthSingletonList x = My.length [x] == 1
 
--- length of a list formed by prepending an element to another list
+-- length of a list formed by prepending an element to another list.
 -- is the length of the original list + 1. 
 prop_AddingElementIncreasesLength :: Int -> [Int] -> Bool 
 prop_AddingElementIncreasesLength x xs = My.length (x:xs) == My.length xs + 1
@@ -127,11 +127,11 @@ prop_mapSingletonList x = My.map show [x] == [show x]
 
 ---- reverse properties ----
 
--- reverse of a reverse of a list is the original list
+-- reverse of a reverse of a list is the original list.
 prop_reverseReverseIsOriginal :: [Int] -> Bool 
 prop_reverseReverseIsOriginal xs = My.reverse (My.reverse xs) == xs
 
--- length of a reverse of a list is equal to the length of the original list
+-- length of a reverse of a list is equal to the length of the original list.
 prop_reverseLength :: [Int] -> Bool 
 prop_reverseLength xs = My.length (My.reverse xs) == My.length xs
 
@@ -143,17 +143,22 @@ prop_reverseIsReverse xs =  let revXs   = My.reverse xs
 
 ---- intersperse properties ----
 
+-- if result of an intersperse is the same as the original list, original list was empty or singleton.
 prop_intersperseLengthSingletonOrNull :: Int -> [Int] -> Property
 prop_intersperseLengthSingletonOrNull x xs = (My.intersperse x xs == xs) ==> My.null xs || My.length xs == 1
 
+-- if a list is non-null and non-singleton, then the length of an intersperse 
+-- is twice the length of the original list, plus one.
 prop_intersperseLengthGeneral :: Int -> [Int] -> Property
 prop_intersperseLengthGeneral x xs = not (My.null xs || My.length xs == 1) ==> My.length (My.intersperse x xs) == My.length xs + My.length xs - 1
 
+-- interspersing y between [x, z] yields [x, y, z].
 prop_intersperseStructure :: Int -> Int -> Int -> Bool 
 prop_intersperseStructure x y z = My.intersperse y [x, z] == [x, y, z]
 
 ---- intercalate properties ----
 
+-- intercalate definition from documentation.
 prop_intercalateIdentity :: [Int] -> [[Int]] -> Bool
 prop_intercalateIdentity x xs = My.intercalate x xs == My.concat (My.intersperse x xs)
 
@@ -167,21 +172,26 @@ prop_transposeTransposeIsOriginal xs = (My.transpose . My.transpose $ xs) == xs
 
 ---- subsequences properties ----
 
+-- size of the subsequences (power set) of a list with length n is 2 ^ n.
 prop_subsequencesLength :: [Int] -> Bool 
-prop_subsequencesLength xs = length (My.subsequences xs) == 2 ^ (length xs)
+prop_subsequencesLength xs = My.length (My.subsequences xs) == 2 ^ (My.length xs)
 
+-- all lists of subsequences contain the empty list.
 prop_subsequencesContainsEmptyList :: [Int] -> Bool 
 prop_subsequencesContainsEmptyList xs = [] `My.elem` My.subsequences xs
 
+-- all lists of subsequences contain the original list.
 prop_subsequencesContainsOriginal:: [Int] -> Bool 
 prop_subsequencesContainsOriginal xs = xs `My.elem` My.subsequences xs
 
 
 ---- permutations properties ----
 
+-- size of the set of permutations of a list is the factorial of the length of the list.
 prop_permutationsLength :: [Int] -> Bool 
 prop_permutationsLength xs = My.length (My.permutations xs) == factorial (My.length xs)
 
+-- all sets of permutations contain the original list.
 prop_permutationsContainsOriginal :: [Int] -> Bool 
 prop_permutationsContainsOriginal xs = xs `My.elem` My.permutations xs
 
@@ -193,83 +203,106 @@ prop_permutationsContainsOriginal xs = xs `My.elem` My.permutations xs
 
 ---- foldl properties ----
 
+-- foldl can reproduce the original list.
 prop_foldlListConstruction :: [Int] -> Bool
 prop_foldlListConstruction xs = My.foldl (\acc x -> acc ++ [x]) [] xs == xs
 
 ---- foldl1 properties ----
 
+-- foldl1 is equivalent to foldl with a starting identity value. 
 prop_foldl1Equivalence :: [Int] -> Property
 prop_foldl1Equivalence xs = (not . My.null) xs ==> My.foldl1 (+) xs == My.foldl (+) 0 xs
 
 ---- foldr properties ----
 
+-- foldr can reproduce the original list.
 prop_foldrListConstruction :: [Int] -> Bool 
 prop_foldrListConstruction xs = My.foldr (:) [] xs == xs
 
 ---- foldr1 properties ----
 
+-- foldr1 is equivalent to foldr with a starting identity value.
 prop_foldr1Equivalence :: [Int] -> Property 
 prop_foldr1Equivalence xs = (not . My.null) xs ==> My.foldr1 (+) xs == My.foldr (+) 0 xs
 
 ---- concat properties ----
 
+-- concat of three lists is equivalent to appending the three lists together.
 prop_concatStructure :: [Int] -> [Int] -> [Int] -> Bool
 prop_concatStructure xs ys zs = My.concat [xs, ys, zs] == (xs ++ ys ++ zs)
 
+-- length of a concat is equal to the sum of the lengths of all the lists.
 prop_concatLength :: [[Int]] -> Bool 
 prop_concatLength xss = (My.length . My.concat) xss == (My.sum . My.map (My.length)) xss 
 
 ---- concatMap properties ----
 
+-- concatMap can reproduce the original list.
 prop_concatMapIdentity :: [Int] -> Bool 
 prop_concatMapIdentity xs = My.concatMap (\x -> [x]) xs == xs
 
+-- length of a concatMap replicating each element n times is the length
+-- of the original list multiplied by n. 
 prop_concatMapLength :: Int -> [Int] -> Property
 prop_concatMapLength n xs = n > 0 ==> (My.length . My.concatMap (My.replicate n)) xs == (My.length xs * n)
 
 ---- and properties ----
 
+-- result of an and is False whenever a False is in the list.
 prop_andWithAFalseIsFalse :: [Bool] -> Bool 
 prop_andWithAFalseIsFalse bs = My.and (False:bs) == False 
 
+-- and works on infinite lists if a False is finitely far from the beginning of the list.
 prop_andInfiniteListWithFalse :: Int -> Bool 
 prop_andInfiniteListWithFalse n = My.and (My.replicate n True ++ [False] ++ My.repeat True) == False
 
+-- and of any number of True's is True.
 prop_anyNumberOfTrueIsTrue :: Int -> Bool
 prop_anyNumberOfTrueIsTrue n = My.and (My.replicate n True) == True 
 
+-- and of a singleton [Bool] is the Bool itself.
 prop_andOfSingleValueIsItself :: Bool -> Bool 
 prop_andOfSingleValueIsItself b = My.and [b] == b
 
 ---- or properties ----
 
+-- result of an or with a True in the list is True.
 prop_orWithATrueIsTrue :: [Bool] -> Bool 
 prop_orWithATrueIsTrue bs = My.or (True:bs) == True 
 
+-- or works on infinite lists if True is finitely far from the beginning.
 prop_orInfiniteListWithTrue :: Int -> Bool 
 prop_orInfiniteListWithTrue n = My.or (My.replicate n False ++ [True] ++ My.repeat False) == True
 
+-- or of any number of Falses is False.
 prop_anyNumberOfFalseIsFalse :: Int -> Bool
 prop_anyNumberOfFalseIsFalse n = My.or (My.replicate n False) == False
 
+-- or of a singleton [Bool] is the Bool itself.
 prop_orOfSingleValueIsItself :: Bool -> Bool 
 prop_orOfSingleValueIsItself b = My.or [b] == b
 
 ---- sum properties ----
 
+-- summing a number x repeated n times is n * x.
 prop_sumOfRepeatedNumber :: Int -> Int -> Bool 
 prop_sumOfRepeatedNumber n x = My.sum (My.replicate n x) == n * x
 
+-- summing the numbers 1..n = n * (n + 1) / 2.
 prop_sumOfOneToN :: Int -> Property
 prop_sumOfOneToN n = n > 0 ==> 2 * My.sum ([1..n]) == n * (n + 1)
 
 ---- product properties ----
 
+-- multiplying a number x for n times is x ^ n.
 prop_productOfRepeatedNumber :: Int -> Int -> Bool 
 prop_productOfRepeatedNumber n x = My.product (My.replicate n x) == x ^ n
 
+-- product of 1..n is n!. 
 prop_productOfOneToN :: Int -> Property
 prop_productOfOneToN n = n > 0 ==> My.product [1..n] == factorial n 
+
+
 
 main = do
     labeledCheck (NamedProp "prop_ConcatLength" prop_ConcatLength)
