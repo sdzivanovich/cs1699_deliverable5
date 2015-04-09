@@ -206,8 +206,6 @@ prop_foldl1Equivalence xs = (not . My.null) xs ==> My.foldl1 (+) xs == My.foldl 
 prop_foldrListConstruction :: [Int] -> Bool 
 prop_foldrListConstruction xs = My.foldr (:) [] xs == xs
 
-prop_foldrInfiniteList
-
 ---- foldr1 properties ----
 
 prop_foldr1Equivalence :: [Int] -> Property 
@@ -243,7 +241,35 @@ prop_anyNumberOfTrueIsTrue n = My.and (My.replicate n True) == True
 prop_andOfSingleValueIsItself :: Bool -> Bool 
 prop_andOfSingleValueIsItself b = My.and [b] == b
 
+---- or properties ----
 
+prop_orWithATrueIsTrue :: [Bool] -> Bool 
+prop_orWithATrueIsTrue bs = My.or (True:bs) == True 
+
+prop_orInfiniteListWithTrue :: Int -> Bool 
+prop_orInfiniteListWithTrue n = My.or (My.replicate n False ++ [True] ++ My.repeat False) == True
+
+prop_anyNumberOfFalseIsFalse :: Int -> Bool
+prop_anyNumberOfFalseIsFalse n = My.or (My.replicate n False) == False
+
+prop_orOfSingleValueIsItself :: Bool -> Bool 
+prop_orOfSingleValueIsItself b = My.or [b] == b
+
+---- sum properties ----
+
+prop_sumOfRepeatedNumber :: Int -> Int -> Bool 
+prop_sumOfRepeatedNumber n x = My.sum (My.replicate n x) == n * x
+
+prop_sumOfOneToN :: Int -> Property
+prop_sumOfOneToN n = n > 0 ==> 2 * My.sum ([1..n]) == n * (n + 1)
+
+---- product properties ----
+
+prop_productOfRepeatedNumber :: Int -> Int -> Bool 
+prop_productOfRepeatedNumber n x = My.product (My.replicate n x) == x ^ n
+
+prop_productOfOneToN :: Int -> Property
+prop_productOfOneToN n = n > 0 ==> My.product [1..n] == factorial n 
 
 main = do
     labeledCheck (NamedProp "prop_ConcatLength" prop_ConcatLength)
@@ -294,3 +320,11 @@ main = do
     labeledCheck (NamedProp "prop_andInfiniteListWithFalse" prop_andInfiniteListWithFalse)
     labeledCheck (NamedProp "prop_anyNumberOfTrueIsTrue" prop_anyNumberOfTrueIsTrue)
     labeledCheck (NamedProp "prop_andOfSingleValueIsItself" prop_andOfSingleValueIsItself)
+    labeledCheck (NamedProp "prop_orWithATrueIsTrue" prop_orWithATrueIsTrue)
+    labeledCheck (NamedProp "prop_orInfiniteListWithTrue" prop_orInfiniteListWithTrue)
+    labeledCheck (NamedProp "prop_anyNumberOfFalseIsFalse" prop_anyNumberOfFalseIsFalse)
+    labeledCheck (NamedProp "prop_orOfSingleValueIsItself" prop_orOfSingleValueIsItself)
+    labeledCheck (NamedProp "prop_sumOfRepeatedNumber" prop_sumOfRepeatedNumber)
+    labeledCheck (NamedProp "prop_sumOfOneToN" prop_sumOfOneToN)
+    labeledCheck (NamedProp "prop_productOfRepeatedNumber" prop_productOfRepeatedNumber)
+    labeledCheck (NamedProp "prop_productOfOneToN" prop_productOfOneToN)
