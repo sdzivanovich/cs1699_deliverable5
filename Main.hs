@@ -319,6 +319,21 @@ prop_addingNewMaximum xs =
                             newMax = oldMax + 1
                         in  My.maximum (newMax : xs) == newMax
 
+-- minimum of a singleton list is the single element.
+prop_minimumSingleton :: Int -> Bool 
+prop_minimumSingleton x = My.minimum [x] == x
+
+-- minimum of a two element list is the larger one.
+prop_minimumOfTwoElements :: Int -> Int -> Property 
+prop_minimumOfTwoElements x y = x < y ==> My.minimum [x, y] == x
+
+-- adding a new minimum to the list changes the minimum element.
+prop_addingNewMinimum :: [Int] -> Property
+prop_addingNewMinimum xs =  
+    (not . null) xs ==> let oldMin = My.minimum xs
+                            newMin = oldMin - 1
+                        in  My.minimum (newMin : xs) == newMin
+
 
 main = do
     labeledCheck (NamedProp "prop_ConcatLength" prop_ConcatLength)
@@ -380,3 +395,6 @@ main = do
     labeledCheck (NamedProp "prop_maximumSingleton" prop_maximumSingleton)
     labeledCheck (NamedProp "prop_maximumOfTwoElements" prop_maximumOfTwoElements)
     labeledCheck (NamedProp "prop_addingNewMaximum" prop_addingNewMaximum)
+    labeledCheck (NamedProp "prop_minimumSingleton" prop_minimumSingleton)
+    labeledCheck (NamedProp "prop_minimumOfTwoElements" prop_minimumOfTwoElements)
+    labeledCheck (NamedProp "prop_addingNewMinimum" prop_addingNewMinimum)
