@@ -20,7 +20,6 @@ factorial n
     | n < 0     = error "n must be nonnegative"
     | otherwise = n * factorial (n - 1)
 
-
 ---- (++) properties ----
 
 -- Length of a concatenation is the sum of the length of both pieces
@@ -194,12 +193,55 @@ prop_permutationsContainsOriginal xs = xs `My.elem` My.permutations xs
 
 ---- foldl properties ----
 
+prop_foldlListConstruction :: [Int] -> Bool
+prop_foldlListConstruction xs = My.foldl (\acc x -> acc ++ [x]) [] xs == xs
+
 ---- foldl1 properties ----
+
+prop_foldl1Equivalence :: [Int] -> Property
+prop_foldl1Equivalence xs = (not . My.null) xs ==> My.foldl1 (+) xs == My.foldl (+) 0 xs
 
 ---- foldr properties ----
 
+prop_foldrListConstruction :: [Int] -> Bool 
+prop_foldrListConstruction xs = My.foldr (:) [] xs == xs
+
+prop_foldrInfiniteList
+
 ---- foldr1 properties ----
 
+prop_foldr1Equivalence :: [Int] -> Property 
+prop_foldr1Equivalence xs = (not . My.null) xs ==> My.foldr1 (+) xs == My.foldr (+) 0 xs
+
+---- concat properties ----
+
+prop_concatStructure :: [Int] -> [Int] -> [Int] -> Bool
+prop_concatStructure xs ys zs = My.concat [xs, ys, zs] == (xs ++ ys ++ zs)
+
+prop_concatLength :: [[Int]] -> Bool 
+prop_concatLength xss = (My.length . My.concat) xss == (My.sum . My.map (My.length)) xss 
+
+---- concatMap properties ----
+
+prop_concatMapIdentity :: [Int] -> Bool 
+prop_concatMapIdentity xs = My.concatMap (\x -> [x]) xs == xs
+
+prop_concatMapLength :: Int -> [Int] -> Property
+prop_concatMapLength n xs = n > 0 ==> (My.length . My.concatMap (My.replicate n)) xs == (My.length xs * n)
+
+---- and properties ----
+
+prop_andWithAFalseIsFalse :: [Bool] -> Bool 
+prop_andWithAFalseIsFalse bs = My.and (False:bs) == False 
+
+prop_andInfiniteListWithFalse :: Int -> Bool 
+prop_andInfiniteListWithFalse n = My.and (My.replicate n True ++ [False] ++ My.repeat True) == False
+
+prop_anyNumberOfTrueIsTrue :: Int -> Bool
+prop_anyNumberOfTrueIsTrue n = My.and (My.replicate n True) == True 
+
+prop_andOfSingleValueIsItself :: Bool -> Bool 
+prop_andOfSingleValueIsItself b = My.and [b] == b
 
 
 
@@ -240,3 +282,15 @@ main = do
     --labeledCheck (NamedProp "prop_permutationsLength" prop_permutationsLength)
     --labeledCheck (NamedProp "prop_permutationsContainsOriginal" prop_permutationsContainsOriginal)
     --labeledCheck (NamedProp "prop_permutationsHaveSamePermutations" prop_permutationsHaveSamePermutations)
+    labeledCheck (NamedProp "prop_foldlListConstruction" prop_foldlListConstruction)
+    labeledCheck (NamedProp "prop_foldl1Equivalence" prop_foldl1Equivalence)
+    labeledCheck (NamedProp "prop_foldrListConstruction" prop_foldrListConstruction)
+    labeledCheck (NamedProp "prop_foldr1Equivalence" prop_foldr1Equivalence)
+    labeledCheck (NamedProp "prop_concatStructure" prop_concatStructure)
+    labeledCheck (NamedProp "prop_concatLength" prop_concatLength)
+    labeledCheck (NamedProp "prop_concatMapIdentity" prop_concatMapIdentity)
+    labeledCheck (NamedProp "prop_concatMapLength" prop_concatMapLength)
+    labeledCheck (NamedProp "prop_andWithAFalseIsFalse" prop_andWithAFalseIsFalse)
+    labeledCheck (NamedProp "prop_andInfiniteListWithFalse" prop_andInfiniteListWithFalse)
+    labeledCheck (NamedProp "prop_anyNumberOfTrueIsTrue" prop_anyNumberOfTrueIsTrue)
+    labeledCheck (NamedProp "prop_andOfSingleValueIsItself" prop_andOfSingleValueIsItself)
