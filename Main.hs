@@ -302,6 +302,22 @@ prop_productOfRepeatedNumber n x = My.product (My.replicate n x) == x ^ n
 prop_productOfOneToN :: Int -> Property
 prop_productOfOneToN n = n > 0 ==> My.product [1..n] == factorial n 
 
+---- maximum properties ----
+
+-- maximum of a singleton list is the single element.
+prop_maximumSingleton :: Int -> Bool 
+prop_maximumSingleton x = My.maximum [x] == x
+
+-- maximum of a two element list is the larger one.
+prop_maximumOfTwoElements :: Int -> Int -> Property 
+prop_maximumOfTwoElements x y = x > y ==> My.maximum [x, y] == x
+
+-- adding a new maximum to the list changes the maximum element.
+prop_addingNewMaximum :: [Int] -> Property
+prop_addingNewMaximum xs =  
+    (not . null) xs ==> let oldMax = My.maximum xs
+                            newMax = oldMax + 1
+                        in  My.maximum (newMax : xs) == newMax
 
 
 main = do
@@ -361,3 +377,6 @@ main = do
     labeledCheck (NamedProp "prop_sumOfOneToN" prop_sumOfOneToN)
     labeledCheck (NamedProp "prop_productOfRepeatedNumber" prop_productOfRepeatedNumber)
     labeledCheck (NamedProp "prop_productOfOneToN" prop_productOfOneToN)
+    labeledCheck (NamedProp "prop_maximumSingleton" prop_maximumSingleton)
+    labeledCheck (NamedProp "prop_maximumOfTwoElements" prop_maximumOfTwoElements)
+    labeledCheck (NamedProp "prop_addingNewMaximum" prop_addingNewMaximum)
