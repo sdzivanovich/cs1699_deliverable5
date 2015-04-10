@@ -20,6 +20,15 @@ factorial n
     | n < 0     = error "n must be nonnegative"
     | otherwise = n * factorial (n - 1)
 
+-- dummy predicate for *While functions
+dummyPredicate :: Int -> Int -> Bool 
+dummyPredicate n = not . (== 0) . (`div` n)
+
+-- function to filter keys from association list 
+filterKeys :: Eq a => a -> [(a, b)] -> [(a, b)]
+filterKeys x xs =   let keyEquiv a (b, c) = a == b 
+                    in  My.filter (not . keyEquiv x) xs
+
 -------- (++) properties --------
 
 -- Length of a concatenation is the sum of the length of both pieces.
@@ -433,14 +442,14 @@ prop_splitAtEquivalentToTakeAndDrop n xs = My.splitAt n xs == (My.take n xs, My.
 -- first element of a list from dropWhile does not satisfy the predicate.
 prop_firstElementOfDropWhileDoesNotSatisfyPredicate :: [Int] -> Property 
 prop_firstElementOfDropWhileDoesNotSatisfyPredicate xs = 
-    let p = not . (== 0) . (`div` 3)
+    let p = dummyPredicate 3
         dropped = My.dropWhile p xs 
     in  (not . null) dropped ==> (not . p . My.head) dropped 
 
 -- dropWhile is what remains after a takeWhile with the same predicate.
 prop_dropWhileIsSuffixAfterTakeWhile :: [Int] -> Bool 
 prop_dropWhileIsSuffixAfterTakeWhile xs = 
-    let p = not . (== 0) . (`div` 3)
+    let p = dummyPredicate 4
         n = My.length . My.takeWhile p $ xs
     in  My.dropWhile p xs == My.drop n xs 
 
@@ -449,20 +458,67 @@ prop_dropWhileIsSuffixAfterTakeWhile xs =
 -- everything in a takeWhile satisfies the given predicate.
 prop_allElementsOfTakeWhileSatisfyPredicate :: [Int] -> Bool 
 prop_allElementsOfTakeWhileSatisfyPredicate xs =
-    let p = not . (== 0) . (`div` 3)
+    let p = dummyPredicate 5
         taken = My.takeWhile p xs 
     in  all p taken
 
 -- the next element after a takeWhile should not satisfy the predicate.
 prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate :: [Int] -> Property
 prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate xs =
-    let p = not . (== 0) . (`div` 3)
+    let p = dummyPredicate 6
         taken = My.takeWhile p  xs
         takenLen = My.length taken
         leftover = My.drop takenLen xs 
     in  (not . My.null) leftover ==> (not . p . My.head) leftover  
 
 -------- span properties --------
+
+-- span p xs is equivalent to (takeWhile p xs, dropWhile p xs). 
+prop_spanIsEquivalentToTakeWhileAndDropWhile :: [Int] -> Bool
+prop_spanIsEquivalentToTakeWhileAndDropWhile xs = 
+    let p = dummyPredicate 6
+    in  My.span p xs == (My.takeWhile p xs, My.dropWhile p xs)
+
+-------- break properties --------
+
+-- break p xs is equivalent to span (not . p) xs. 
+prop_breakIsEquivalentToSpanWithNegatedPredicate :: [Int] -> Bool 
+prop_breakIsEquivalentToSpanWithNegatedPredicate xs =
+    let p = dummyPredicate 7
+    in  My.break p xs == My.span (not . p) xs
+
+
+-------- elem properties --------
+
+-- elem returns true when the element is contained in the list.
+prop_elemReturnsTrueWhenElementIsInList :: Int -> [Int] -> Bool 
+prop_elemReturnsTrueWhenElementIsInList x xs = x `My.elem` (xs ++ [x])
+
+-- elem returns false when the element is not in the list.
+prop_elemReturnsFalseWhenElementIsNotInList :: Int -> [Int] -> Bool 
+prop_elemReturnsFalseWhenElementIsNotInList x xs = 
+    let noElems = My.takeWhile ( /= x) xs 
+    in  not (x `My.elem` noElems)
+
+-------- notElem properties --------
+
+prop_notElemIsNegationOfElem :: Int -> [Int] -> Bool 
+prop_notElemIsNegationOfElem x xs = (x `My.notElem` xs) == not (x `My.elem` xs)
+
+-------- lookup properties --------
+
+-- lookup returns Nothing if the key is not found.
+prop_lookupGivesNothingWhenKeyIsNotInList :: Int -> [(Int, Int)] -> Bool 
+prop_lookupGivesNothingWhenKeyIsNotInList x xs = 
+    let noKeys = filterKeys x xs 
+    in  My.lookup x noKeys == Nothing
+
+-- lookup of x returns Just y if list contains (x, y)
+prop_lookupGivesJustWhenKeyIsInList :: Int -> Int -> [(Int, Int)] -> Bool 
+prop_lookupGivesJustWhenKeyIsInList x y xs = 
+    let noKeys = filterKeys x xs 
+        withKey = noKeys ++ [(x, y)]
+    in  My.lookup x withKey == Just y 
 
 -------- !! properties --------
 
@@ -558,3 +614,10 @@ main = do
     labeledCheck (NamedProp "prop_dropWhileIsSuffixAfterTakeWhile" prop_dropWhileIsSuffixAfterTakeWhile)
     labeledCheck (NamedProp "prop_allElementsOfTakeWhileSatisfyPredicate" prop_allElementsOfTakeWhileSatisfyPredicate)
     labeledCheck (NamedProp "prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate" prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate)
+    labeledCheck (NamedProp "prop_spanIsEquivalentToTakeWhileAndDropWhile" prop_spanIsEquivalentToTakeWhileAndDropWhile)
+    labeledCheck (NamedProp "prop_breakIsEquivalentToSpanWithNegatedPredicate" prop_breakIsEquivalentToSpanWithNegatedPredicate)
+    labeledCheck (NamedProp "prop_elemReturnsTrueWhenElementIsInList" prop_elemReturnsTrueWhenElementIsInList)
+    labeledCheck (NamedProp "prop_elemReturnsFalseWhenElementIsNotInList" prop_elemReturnsFalseWhenElementIsNotInList)
+    labeledCheck (NamedProp "prop_notElemIsNegationOfElem" prop_notElemIsNegationOfElem)
+    labeledCheck (NamedProp "prop_lookupGivesNothingWhenKeyIsNotInList" prop_lookupGivesNothingWhenKeyIsNotInList)
+    labeledCheck (NamedProp "prop_lookupGivesJustWhenKeyIsInList" prop_lookupGivesJustWhenKeyIsInList)
