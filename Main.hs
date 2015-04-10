@@ -346,8 +346,8 @@ prop_maximumSingleton :: Int -> Bool
 prop_maximumSingleton x = My.maximum [x] == x
 
 -- maximum of a two element list is the larger one.
-prop_maximumOfTwoElements :: Int -> Int -> Property 
-prop_maximumOfTwoElements x y = x > y ==> My.maximum [x, y] == x
+prop_maximumOfTwoElements :: Int -> Int -> Bool 
+prop_maximumOfTwoElements x y = My.maximum [x, y] == max x y 
 
 -- adding a new maximum to the list changes the maximum element.
 prop_addingNewMaximum :: [Int] -> Property
