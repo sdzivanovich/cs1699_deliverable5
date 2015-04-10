@@ -24,7 +24,7 @@ To run the tests and generate code coverage analysis, you can use the shell scri
 
 	$ ./coverage.sh
 
-This will run the tests, display their outcomes and the code coverage analysis on the terminal, and generate .html files in a `coverage/` directory (all via hpc). 
+This will run the tests, display their outcomes and the code coverage analysis on the terminal, and generate .html files in a `coverage/` directory (all via hpc).
 
 ### Notes ###
 This project has a dependency on QuickCheck.

@@ -18,7 +18,7 @@
 -----------------------------------------------------------------------------
 
 -- NOTE: This code was adapted from the GHC.List module specified above.
--- All licensing remains as specified above. 
+-- All licensing remains as specified above.
 
 module MyList (
    -- [] (..),          -- built-in syntax; can't be used in export list
