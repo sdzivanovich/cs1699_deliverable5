@@ -229,11 +229,14 @@ prop_permutationsContainsOriginal :: [Int] -> Property
 prop_permutationsContainsOriginal xs = 
     My.length xs < maxLenForPermutations ==> xs `My.elem` My.permutations xs
 
---TODO
---prop_permutationsHaveSamePermutations :: [Int] -> Bool 
---prop_permutationsHaveSamePermutations xs =  let perms = My.permutations xs
---                                                permsOfPerms = My.map My.permutations perms
---                                            in My.all ( == perms) permsOfPerms
+-- permutations of the permutations of a list all have the same permutations.
+prop_permutationsHaveSamePermutations :: [Int] -> Property 
+prop_permutationsHaveSamePermutations xs =  
+    My.length xs < maxLenForPermutations ==>  
+        let permAndSort     = My.sort . My.permutations
+            perms           = permAndSort xs
+            permsOfPerms    = My.map permAndSort perms
+        in  all ( == perms) permsOfPerms
 
 ---------------- foldl properties ----------------
 
@@ -666,7 +669,7 @@ main = do
     labeledCheck (NamedProp "prop_subsequencesContainsOriginal" prop_subsequencesContainsOriginal)
     labeledCheck (NamedProp "prop_permutationsLength" prop_permutationsLength)
     labeledCheck (NamedProp "prop_permutationsContainsOriginal" prop_permutationsContainsOriginal)
-    --labeledCheck (NamedProp "prop_permutationsHaveSamePermutations" prop_permutationsHaveSamePermutations)
+    labeledCheck (NamedProp "prop_permutationsHaveSamePermutations" prop_permutationsHaveSamePermutations)
     labeledCheck (NamedProp "prop_foldlListConstruction" prop_foldlListConstruction)
     labeledCheck (NamedProp "prop_foldl1Equivalence" prop_foldl1Equivalence)
     labeledCheck (NamedProp "prop_foldrListConstruction" prop_foldrListConstruction)
