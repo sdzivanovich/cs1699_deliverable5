@@ -26,15 +26,15 @@ factorial n
 prop_appendLength :: [Int] -> [Int] -> Bool 
 prop_appendLength xs ys = My.length xs + My.length ys == My.length (xs My.++ ys)
 
--- Empty list appendenated with another list is the other list.
+-- Empty list appended with another list is the other list.
 prop_appendRhsEmpty :: [Int] -> Bool
 prop_appendRhsEmpty ys = ([] My.++ ys) == ys
 
--- A list appendenated with the empty list is itself.
+-- A list appended with the empty list is itself.
 prop_appendLhsEmpty :: [Int] -> Bool 
 prop_appendLhsEmpty xs = (xs My.++ []) == xs
 
--- First list follows the second in a appendenation.
+-- First list follows the second in an append.
 prop_appendStructure :: [Int] -> [Int] -> Bool 
 prop_appendStructure xs ys =    let n       = My.length xs 
                                     (a, b)  = My.splitAt n (xs My.++ ys)
@@ -336,6 +336,18 @@ prop_addingNewMinimum xs =
                             newMin = oldMin - 1
                         in  My.minimum (newMin : xs) == newMin
 
+--------- iterate properties ---------
+
+-- head of an iterate list is the original element.
+prop_headOfIterateIsOriginal :: Int -> Bool
+prop_headOfIterateIsOriginal x = (My.head . My.iterate negate) x == x
+
+-- test that iterate repeatedly applies the given function.
+prop_iterateRepeatedApplications :: Int -> Property
+prop_iterateRepeatedApplications n = n > 0 ==> (My.takeWhile ( <= n) . iterate ( + 1)) 0 == [0..n]
+
+
+--------- 
 
 main = do
     labeledCheck (NamedProp "prop_appendLength" prop_appendLength)
@@ -400,3 +412,5 @@ main = do
     labeledCheck (NamedProp "prop_minimumSingleton" prop_minimumSingleton)
     labeledCheck (NamedProp "prop_minimumOfTwoElements" prop_minimumOfTwoElements)
     labeledCheck (NamedProp "prop_addingNewMinimum" prop_addingNewMinimum)
+    labeledCheck (NamedProp "prop_headOfIterateIsOriginal" prop_headOfIterateIsOriginal)
+    labeledCheck (NamedProp "prop_iterateRepeatedApplications" prop_iterateRepeatedApplications)
