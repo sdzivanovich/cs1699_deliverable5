@@ -33,7 +33,7 @@ module MyList (
    elem, notElem, lookup,
    concatMap,
    zip, zipWith, unzip,
-   errorEmptyList,
+   errorEmptyList, sort
 
  ) where
 
@@ -44,6 +44,18 @@ import GHC.Integer (Integer)
 
 infixl 9  !!
 infix  4 `elem`, `notElem`
+
+
+sort :: (Ord a) => [a] -> [a]
+sort = foldr (insertBy compare) []
+
+-- | The non-overloaded version of 'insert'.
+insertBy :: (a -> a -> Ordering) -> a -> [a] -> [a]
+insertBy _   x [] = [x]
+insertBy cmp x ys@(y:ys')
+ = case cmp x y of
+     GT -> y : insertBy cmp x ys'
+     _  -> x : ys
 
 --------------------------------------------------------------
 -- List-manipulation functions
