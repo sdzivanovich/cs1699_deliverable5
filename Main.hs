@@ -363,8 +363,8 @@ prop_minimumSingleton :: Int -> Bool
 prop_minimumSingleton x = My.minimum [x] == x
 
 -- minimum of a two element list is the larger one.
-prop_minimumOfTwoElements :: Int -> Int -> Property 
-prop_minimumOfTwoElements x y = x < y ==> My.minimum [x, y] == x
+prop_minimumOfTwoElements :: Int -> Int -> Bool 
+prop_minimumOfTwoElements x y = My.minimum [x, y] == min x y 
 
 -- adding a new minimum to the list changes the minimum element.
 prop_addingNewMinimum :: [Int] -> Property
