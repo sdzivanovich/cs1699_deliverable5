@@ -26,8 +26,8 @@ module MyList (
    map, (++), filter, concat,
    head, last, tail, init, uncons, null, length, (!!),
    intersperse, intercalate, transpose, subsequences, permutations,
-   foldl, foldl1, scanl, scanl1, foldr, foldr1,
-   scanr, scanr1, iterate, repeat, replicate, cycle,
+   foldl, foldl1, foldr, foldr1,
+   iterate, repeat, replicate, cycle,
    take, drop, sum, product, maximum, minimum, splitAt, takeWhile, dropWhile,
    span, break, reverse, and, or,
    elem, notElem, lookup,
@@ -240,82 +240,6 @@ product                 :: (Num a) => [a] -> a
 {-# INLINE product #-}
 product                 =  foldl (*) 1
 
--- | 'scanl' is similar to 'foldl', but returns a list of successive
--- reduced values from the left:
---
--- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
---
--- Note that
---
--- > last (scanl f z xs) == foldl f z xs.
-
--- This peculiar arrangement is necessary to prevent scanl being rewritten in
--- its own right-hand side.
-{-# NOINLINE [1] scanl #-}
-scanl                   :: (b -> a -> b) -> b -> [a] -> [b]
-scanl                   = scanlGo
-  where
-    scanlGo           :: (b -> a -> b) -> b -> [a] -> [b]
-    scanlGo f q ls    = q : (case ls of
-                               []   -> []
-                               x:xs -> scanlGo f (f q x) xs)
-
--- Note [scanl rewrite rules]
-{-# RULES
-"scanl"  [~1] forall f a bs . scanl f a bs =
-  build (\c n -> a `c` foldr (scanlFB f c) (constScanl n) bs a)
-"scanlList" [1] forall f (a::a) bs .
-    foldr (scanlFB f (:)) (constScanl []) bs a = tail (scanl f a bs)
- #-}
-
-{-# INLINE [0] scanlFB #-}
-scanlFB :: (b -> a -> b) -> (b -> c -> c) -> a -> (b -> c) -> b -> c
-scanlFB f c = \b g -> (\x -> let b' = f x b in b' `c` g b')
-  -- See Note [Left folds via right fold]
-
-{-# INLINE [0] constScanl #-}
-constScanl :: a -> b -> a
-constScanl = const
-
-
--- | 'scanl1' is a variant of 'scanl' that has no starting value argument:
---
--- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
-
-scanl1                  :: (a -> a -> a) -> [a] -> [a]
-scanl1 f (x:xs)         =  scanl f x xs
-scanl1 _ []             =  []
-
-{-
-Note [scanl rewrite rules]
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In most cases, when we rewrite a form to one that can fuse, we try to rewrite it
-back to the original form if it does not fuse. For scanl, we do something a
-little different. In particular, we rewrite
-
-scanl f a bs
-
-to
-
-build (\c n -> a `c` foldr (scanlFB f c) (constScanl n) bs a)
-
-When build is inlined, this becomes
-
-a : foldr (scanlFB f (:)) (constScanl []) bs a
-
-To rewrite this form back to scanl, we would need a rule that looked like
-
-forall f a bs. a : foldr (scanlFB f (:)) (constScanl []) bs a = scanl f a bs
-
-The problem with this rule is that it has (:) at its head. This would have the
-effect of changing the way the inliner looks at (:), not only here but
-everywhere.  In most cases, this makes no difference, but in some cases it
-causes it to come to a different decision about whether to inline something.
-Based on nofib benchmarks, this is bad for performance. Therefore, we instead
-match on everything past the :, which is just the tail of scanl.
--}
-
 -- foldr, foldr1, scanr, and scanr1 are the right-to-left duals of the
 -- above functions.
 
@@ -326,40 +250,6 @@ foldr1                  :: (a -> a -> a) -> [a] -> a
 foldr1 _ [x]            =  x
 foldr1 f (x:xs)         =  f x (foldr1 f xs)
 foldr1 _ []             =  errorEmptyList "foldr1"
-
--- | 'scanr' is the right-to-left dual of 'scanl'.
--- Note that
---
--- > head (scanr f z xs) == foldr f z xs.
-{-# NOINLINE [1] scanr #-}
-scanr                   :: (a -> b -> b) -> b -> [a] -> [b]
-scanr _ q0 []           =  [q0]
-scanr f q0 (x:xs)       =  f x q : qs
-                           where qs@(q:_) = scanr f q0 xs
-
-{-# INLINE [0] strictUncurryScanr #-}
-strictUncurryScanr :: (a -> b -> c) -> (a, b) -> c
-strictUncurryScanr f pair = case pair of
-                              (x, y) -> f x y
-
-{-# INLINE [0] scanrFB #-}
-scanrFB :: (a -> b -> b) -> (b -> c -> c) -> a -> (b, c) -> (b, c)
-scanrFB f c = \x (r, est) -> (f x r, r `c` est)
-
-{-# RULES
-"scanr" [~1] forall f q0 ls . scanr f q0 ls =
-  build (\c n -> strictUncurryScanr c (foldr (scanrFB f c) (q0,n) ls))
-"scanrList" [1] forall f q0 ls .
-               strictUncurryScanr (:) (foldr (scanrFB f (:)) (q0,[]) ls) =
-                 scanr f q0 ls
- #-}
-
--- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
-scanr1                  :: (a -> a -> a) -> [a] -> [a]
-scanr1 _ []             =  []
-scanr1 _ [x]            =  [x]
-scanr1 f (x:xs)         =  f x q : qs
-                           where qs@(q:_) = scanr1 f xs
 
 -- | 'maximum' returns the maximum value from a list,
 -- which must be non-empty, finite, and of an ordered type.
