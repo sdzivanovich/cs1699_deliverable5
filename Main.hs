@@ -22,10 +22,6 @@ factorial n
     | n < 0     = error "n must be nonnegative"
     | otherwise = n * factorial (n - 1)
 
--- dummy predicate for *While functions.
-dummyPredicate :: Int -> Int -> Bool 
-dummyPredicate n = not . (== 0) . (`div` n)
-
 -- function to filter keys from association list.
 filterKeys :: Eq a => a -> [(a, b)] -> [(a, b)]
 filterKeys x xs =   let keyEquiv a (b, c) = a == b 
@@ -470,50 +466,44 @@ prop_splitAtEquivalentToTakeAndDrop n xs = My.splitAt n xs == (My.take n xs, My.
 -- first element of a list from dropWhile does not satisfy the predicate.
 prop_firstElementOfDropWhileDoesNotSatisfyPredicate :: [Int] -> Property 
 prop_firstElementOfDropWhileDoesNotSatisfyPredicate xs = 
-    let p = dummyPredicate 3
-        dropped = My.dropWhile p xs 
-    in  (not . null) dropped ==> (not . p . My.head) dropped 
+    let dropped = My.dropWhile even xs 
+    in  (not . null) dropped ==> (not . even . My.head) dropped 
 
 -- dropWhile is what remains after a takeWhile with the same predicate.
 prop_dropWhileIsSuffixAfterTakeWhile :: [Int] -> Bool 
 prop_dropWhileIsSuffixAfterTakeWhile xs = 
-    let p = dummyPredicate 4
-        n = My.length . My.takeWhile p $ xs
-    in  My.dropWhile p xs == My.drop n xs 
+    let n = My.length . My.takeWhile odd $ xs
+    in  My.dropWhile odd xs == My.drop n xs 
 
 ---------------- takeWhile properties ----------------
 
 -- everything in a takeWhile satisfies the given predicate.
 prop_allElementsOfTakeWhileSatisfyPredicate :: [Int] -> Bool 
 prop_allElementsOfTakeWhileSatisfyPredicate xs =
-    let p = dummyPredicate 5
-        taken = My.takeWhile p xs 
-    in  all p taken
+    let taken = My.takeWhile even xs 
+    in  all even taken
 
 -- the next element after a takeWhile should not satisfy the predicate.
 prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate :: [Int] -> Property
 prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate xs =
-    let p = dummyPredicate 6
-        taken = My.takeWhile p  xs
+    let taken = My.takeWhile odd xs
         takenLen = My.length taken
         leftover = My.drop takenLen xs 
-    in  (not . My.null) leftover ==> (not . p . My.head) leftover  
+    in  (not . My.null) leftover ==> (not . odd . My.head) leftover  
 
 ---------------- span properties ----------------
 
 -- span p xs is equivalent to (takeWhile p xs, dropWhile p xs). 
 prop_spanIsEquivalentToTakeWhileAndDropWhile :: [Int] -> Bool
 prop_spanIsEquivalentToTakeWhileAndDropWhile xs = 
-    let p = dummyPredicate 6
-    in  My.span p xs == (My.takeWhile p xs, My.dropWhile p xs)
+    My.span even xs == (My.takeWhile even xs, My.dropWhile even xs)
 
 ---------------- break properties ----------------
 
 -- break p xs is equivalent to span (not . p) xs. 
 prop_breakIsEquivalentToSpanWithNegatedPredicate :: [Int] -> Bool 
 prop_breakIsEquivalentToSpanWithNegatedPredicate xs =
-    let p = dummyPredicate 7
-    in  My.break p xs == My.span (not . p) xs
+    My.break odd xs == My.span (not . odd) xs
 
 
 ---------------- elem properties ----------------
@@ -553,9 +543,8 @@ prop_lookupGivesJustWhenKeyIsInList x y xs =
 -- applying a filter to a filtered list is the same as filtering it once
 prop_filterFilterIsFirstFilter :: [Int] -> Bool
 prop_filterFilterIsFirstFilter xs = 
-    let p = dummyPredicate 8
-        filtered = My.filter p xs 
-    in My.filter p filtered == filtered 
+    let filtered = My.filter odd xs 
+    in  My.filter odd filtered == filtered 
 
 -- if all elements satisfy the predicate, the resulting list is the same as
 -- the original.
