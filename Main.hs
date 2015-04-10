@@ -385,8 +385,10 @@ prop_takeGivesOriginalListIfNIsAtLeastLengthOfList n xs =
     n >= My.length xs ==> My.take n xs == xs
 
 -- if n <= length of the list and n >= 0, length of the result is equal to n.
-prop_lengthOfTakeIsGivenArgument :: Int -> [Int] -> Property
-prop_lengthOfTakeIsGivenArgument n xs = n < My.length xs && n >= 0 ==> (My.length . My.take n) xs == n
+prop_lengthOfTakeIsGivenArgument :: Int -> [Int] -> Bool
+prop_lengthOfTakeIsGivenArgument n xs = 
+    let len = My.length xs
+    in  (My.length . My.take n) xs == (min len . max 0) n
 
 -- if n < 0, then result of a take is the empty list.
 prop_takeWithNegativeNGivesEmptyList :: Int -> [Int] -> Property 
@@ -397,6 +399,28 @@ prop_takeGivesFirstElements :: Int -> Int -> Property
 prop_takeGivesFirstElements i n = i < n && i > 0 && n >= 0 ==> My.take i [0..n] == [0..(i - 1)]
 
 --------- drop properties ---------
+
+-- if n >= 0, drop should return the empty list.
+prop_dropGivesEmptyListIfNIsBiggerThanListLength :: Int -> [Int] -> Property 
+prop_dropGivesEmptyListIfNIsBiggerThanListLength n xs =
+    n >= My.length xs ==> My.drop n xs == [] 
+
+-- if n < 0, drop should return the original list.
+prop_dropGivesOriginalListIfNLessThanZero :: Int -> [Int] -> Property 
+prop_dropGivesOriginalListIfNLessThanZero n xs =
+    n < 0 ==> My.drop n xs == xs
+
+-- if n >= 0 and n < length of the list, then drop should return the suffix.
+prop_dropGivesSuffixOfList :: Int -> Int -> Property
+prop_dropGivesSuffixOfList i n =
+    i < n && n >= 0 && i >= 0 ==> My.drop i [0..n] == [i..n]
+
+-- length of dropping n elements from a list is length of list minus n.
+-- includes cases when n >= length and n < 0.
+prop_lengthOfDropIsLengthLessArgument :: Int -> [Int] -> Bool
+prop_lengthOfDropIsLengthLessArgument n xs = 
+    let len = My.length xs
+    in  (My.length . My.drop n) xs == (min len . max 0) (len - n)
 
 
 --------- property execution ---------
@@ -479,3 +503,7 @@ main = do
     labeledCheck (NamedProp "prop_lengthOfTakeIsGivenArgument" prop_lengthOfTakeIsGivenArgument)
     labeledCheck (NamedProp "prop_takeWithNegativeNGivesEmptyList" prop_takeWithNegativeNGivesEmptyList)
     labeledCheck (NamedProp "prop_takeGivesFirstElements" prop_takeGivesFirstElements)
+    labeledCheck (NamedProp "prop_dropGivesEmptyListIfNIsBiggerThanListLength" prop_dropGivesEmptyListIfNIsBiggerThanListLength)
+    labeledCheck (NamedProp "prop_dropGivesOriginalListIfNLessThanZero" prop_dropGivesOriginalListIfNLessThanZero)
+    labeledCheck (NamedProp "prop_dropGivesSuffixOfList" prop_dropGivesSuffixOfList)
+    labeledCheck (NamedProp "prop_lengthOfDropIsLengthLessArgument" prop_lengthOfDropIsLengthLessArgument)
