@@ -123,21 +123,6 @@ lenAcc          :: [a] -> Int -> Int
 lenAcc []     n = n
 lenAcc (_:ys) n = lenAcc ys (n+1)
 
-{-# RULES
-"length" [~1] forall xs . length xs = foldr lengthFB idLength xs 0
-"lengthList" [1] foldr lengthFB idLength = lenAcc
- #-}
-
--- The lambda form turns out to be necessary to make this inline
--- when we need it to and give good performance.
-{-# INLINE [0] lengthFB #-}
-lengthFB :: x -> (Int -> Int) -> Int -> Int
-lengthFB _ r = \ !a -> r (a + 1)
-
-{-# INLINE [0] idLength #-}
-idLength :: Int -> Int
-idLength = id
-
 -- | 'filter', applied to a predicate and a list, returns the list of
 -- those elements that satisfy the predicate; i.e.,
 --
@@ -149,17 +134,6 @@ filter _pred []    = []
 filter pred (x:xs)
   | pred x         = x : filter pred xs
   | otherwise      = filter pred xs
-
-{-# NOINLINE [0] filterFB #-}
-filterFB :: (a -> b -> b) -> (a -> Bool) -> a -> b -> b
-filterFB c p x r | p x       = x `c` r
-                 | otherwise = r
-
-{-# RULES
-"filter"     [~1] forall p xs.  filter p xs = build (\c n -> foldr (filterFB c p) n xs)
-"filterList" [1]  forall p.     foldr (filterFB (:) p) [] = filter p
-"filterFB"        forall c p q. filterFB (filterFB c p) q = filterFB c (\x -> q x && p x)
- #-}
 
 -- Note the filterFB rule, which has p and q the "wrong way round" in the RHS.
 --     filterFB (filterFB c p) q a b
@@ -209,23 +183,11 @@ argumets to foldr, where we know how the arguments are called.
 
 -- ----------------------------------------------------------------------------
 
--- | A strict version of 'foldl'.
-foldl'           :: forall a b . (b -> a -> b) -> b -> [a] -> b
-{-# INLINE foldl' #-}
-foldl' k z0 xs =
-  foldr (\(v::a) (fn::b->b) -> (\(z::b) -> z `seq` fn (k z v))) (id :: b -> b) xs z0
-  -- See Note [Left folds via right fold]
-
 -- | 'foldl1' is a variant of 'foldl' that has no starting value argument,
 -- and thus must be applied to non-empty lists.
 foldl1                  :: (a -> a -> a) -> [a] -> a
 foldl1 f (x:xs)         =  foldl f x xs
 foldl1 _ []             =  errorEmptyList "foldl1"
-
--- | A strict version of 'foldl1'
-foldl1'                  :: (a -> a -> a) -> [a] -> a
-foldl1' f (x:xs)         =  foldl' f x xs
-foldl1' _ []             =  errorEmptyList "foldl1'"
 
 -- -----------------------------------------------------------------------------
 -- List sum and product
@@ -260,18 +222,6 @@ maximum                 :: (Ord a) => [a] -> a
 maximum []              =  errorEmptyList "maximum"
 maximum xs              =  foldl1 max xs
 
-{-# RULES
-  "maximumInt"     maximum = (strictMaximum :: [Int]     -> Int);
-  "maximumInteger" maximum = (strictMaximum :: [Integer] -> Integer)
- #-}
-
--- We can't make the overloaded version of maximum strict without
--- changing its semantics (max might not be strict), but we can for
--- the version specialised to 'Int'.
-strictMaximum           :: (Ord a) => [a] -> a
-strictMaximum []        =  errorEmptyList "maximum"
-strictMaximum xs        =  foldl1' max xs
-
 -- | 'minimum' returns the minimum value from a list,
 -- which must be non-empty, finite, and of an ordered type.
 -- It is a special case of 'Data.List.minimumBy', which allows the
@@ -280,15 +230,6 @@ minimum                 :: (Ord a) => [a] -> a
 {-# INLINE [1] minimum #-}
 minimum []              =  errorEmptyList "minimum"
 minimum xs              =  foldl1 min xs
-
-{-# RULES
-  "minimumInt"     minimum = (strictMinimum :: [Int]     -> Int);
-  "minimumInteger" minimum = (strictMinimum :: [Integer] -> Integer)
- #-}
-
-strictMinimum           :: (Ord a) => [a] -> a
-strictMinimum []        =  errorEmptyList "minimum"
-strictMinimum xs        =  foldl1' min xs
 
 
 -- | 'iterate' @f x@ returns an infinite list of repeated applications
@@ -300,32 +241,11 @@ strictMinimum xs        =  foldl1' min xs
 iterate :: (a -> a) -> a -> [a]
 iterate f x =  x : iterate f (f x)
 
-{-# NOINLINE [0] iterateFB #-}
-iterateFB :: (a -> b -> b) -> (a -> a) -> a -> b
-iterateFB c f x0 = go x0
-  where go x = x `c` go (f x)
-
-{-# RULES
-"iterate"    [~1] forall f x.   iterate f x = build (\c _n -> iterateFB c f x)
-"iterateFB"  [1]                iterateFB (:) = iterate
- #-}
-
-
 -- | 'repeat' @x@ is an infinite list, with @x@ the value of every element.
 repeat :: a -> [a]
 {-# INLINE [0] repeat #-}
 -- The pragma just gives the rules more chance to fire
 repeat x = xs where xs = x : xs
-
-{-# INLINE [0] repeatFB #-}     -- ditto
-repeatFB :: (a -> b -> b) -> a -> b
-repeatFB c x = xs where xs = x `c` xs
-
-
-{-# RULES
-"repeat"    [~1] forall x. repeat x = build (\c _n -> repeatFB c x)
-"repeatFB"  [1]  repeatFB (:)       = repeat
- #-}
 
 -- | 'replicate' @n x@ is a list of length @n@ with @x@ the value of
 -- every element.
@@ -357,25 +277,6 @@ takeWhile _ []          =  []
 takeWhile p (x:xs)
             | p x       =  x : takeWhile p xs
             | otherwise =  []
-
-{-# INLINE [0] takeWhileFB #-}
-takeWhileFB :: (a -> Bool) -> (a -> b -> b) -> b -> a -> b -> b
-takeWhileFB p c n = \x r -> if p x then x `c` r else n
-
--- The takeWhileFB rule is similar to the filterFB rule. It works like this:
--- takeWhileFB q (takeWhileFB p c n) n =
--- \x r -> if q x then (takeWhileFB p c n) x r else n =
--- \x r -> if q x then (\x' r' -> if p x' then x' `c` r' else n) x r else n =
--- \x r -> if q x then (if p x then x `c` r else n) else n =
--- \x r -> if q x && p x then x `c` r else n =
--- takeWhileFB (\x -> q x && p x) c n
-{-# RULES
-"takeWhile"     [~1] forall p xs. takeWhile p xs =
-                                build (\c n -> foldr (takeWhileFB p c n) n xs)
-"takeWhileList" [1]  forall p.    foldr (takeWhileFB p (:) []) [] = takeWhile p
-"takeWhileFB"        forall c n p q. takeWhileFB q (takeWhileFB p c n) n =
-                        takeWhileFB (\x -> q x && p x) c n
- #-}
 
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@:
 --
@@ -426,35 +327,6 @@ unsafeTake !_  []     = []
 unsafeTake 1   (x: _) = [x]
 unsafeTake m   (x:xs) = x : unsafeTake (m - 1) xs
 
-{-# RULES
-"take"     [~1] forall n xs . take n xs =
-  build (\c nil -> if 0 < n
-                   then foldr (takeFB c nil) (flipSeqTake nil) xs n
-                   else nil)
-"unsafeTakeList"  [1] forall n xs . foldr (takeFB (:) []) (flipSeqTake []) xs n
-                                        = unsafeTake n xs
- #-}
-
-{-# INLINE [0] flipSeqTake #-}
--- Just flip seq, specialized to Int, but not inlined too early.
--- It's important to force the numeric argument here, even though
--- it's not used. Otherwise, take n [] doesn't force n. This is
--- bad for strictness analysis and unboxing, and leads to increased
--- allocation in T7257.
-flipSeqTake :: a -> Int -> a
-flipSeqTake x !_n = x
-
-{-# INLINE [0] takeFB #-}
-takeFB :: (a -> b -> b) -> b -> a -> (Int -> b) -> Int -> b
--- The \m accounts for the fact that takeFB is used in a higher-order
--- way by takeFoldr, so it's better to inline.  A good example is
---     take n (repeat x)
--- for which we get excellent code... but only if we inline takeFB
--- when given four arguments
-takeFB c n x xs
-  = \ m -> case m of
-            1 -> x `c` n
-            _ -> x `c` xs (m - 1)
 #endif
 
 -- | 'drop' @n xs@ returns the suffix of @xs@
@@ -638,21 +510,6 @@ transpose []             = []
 transpose ([]   : xss)   = transpose xss
 transpose ((x:xs) : xss) = (x : [h | (h:_) <- xss]) : transpose (xs : [ t | (_:t) <- xss])
 
-
--- | The 'partition' function takes a predicate a list and returns
--- the pair of lists of elements which do and do not satisfy the
--- predicate, respectively; i.e.,
---
--- > partition p xs == (filter p xs, filter (not . p) xs)
-
-partition               :: (a -> Bool) -> [a] -> ([a],[a])
-{-# INLINE partition #-}
-partition p xs = foldr (select p) ([],[]) xs
-
-select :: (a -> Bool) -> a -> ([a], [a]) -> ([a], [a])
-select p x ~(ts,fs) | p x       = (x:ts,fs)
-                    | otherwise = (ts, x:fs)
-
 -- | 'and' returns the conjunction of a Boolean list.  For the result to be
 -- 'True', the list must be finite; 'False', however, results from a 'False'
 -- value at a finite index of a finite or infinite list.
@@ -684,45 +541,6 @@ or (x:xs)       =  x || or xs
 {-# RULES
 "or/build"      forall (g::forall b.(Bool->b->b)->b->b) .
                 or (build g) = g (||) False
- #-}
-#endif
-
--- | Applied to a predicate and a list, 'any' determines if any element
--- of the list satisfies the predicate.  For the result to be
--- 'False', the list must be finite; 'True', however, results from a 'True'
--- value for the predicate applied to an element at a finite index of a finite or infinite list.
-any                     :: (a -> Bool) -> [a] -> Bool
-
-#ifdef USE_REPORT_PRELUDE
-any p                   =  or . map p
-#else
-any _ []        = False
-any p (x:xs)    = p x || any p xs
-
-{-# NOINLINE [1] any #-}
-
-{-# RULES
-"any/build"     forall p (g::forall b.(a->b->b)->b->b) .
-                any p (build g) = g ((||) . p) False
- #-}
-#endif
-
--- | Applied to a predicate and a list, 'all' determines if all elements
--- of the list satisfy the predicate. For the result to be
--- 'True', the list must be finite; 'False', however, results from a 'False'
--- value for the predicate applied to an element at a finite index of a finite or infinite list.
-all                     :: (a -> Bool) -> [a] -> Bool
-#ifdef USE_REPORT_PRELUDE
-all p                   =  and . map p
-#else
-all _ []        =  True
-all p (x:xs)    =  p x && all p xs
-
-{-# NOINLINE [1] all #-}
-
-{-# RULES
-"all/build"     forall p (g::forall b.(a->b->b)->b->b) .
-                all p (build g) = g ((&&) . p) True
  #-}
 #endif
 
@@ -821,41 +639,6 @@ xs !! n
 -- The zip family
 --------------------------------------------------------------
 
-foldr2 :: (a -> b -> c -> c) -> c -> [a] -> [b] -> c
-foldr2 k z = go
-  where
-        go []    _ys     = z
-        go _xs   []      = z
-        go (x:xs) (y:ys) = k x y (go xs ys)
-{-# INLINE [0] foldr2 #-}
-
-foldr2_left :: (a -> b -> c -> d) -> d -> a -> ([b] -> c) -> [b] -> d
-foldr2_left _k  z _x _r []     = z
-foldr2_left  k _z  x  r (y:ys) = k x y (r ys)
-
--- foldr2 k z xs ys = foldr (foldr2_left k z)  (\_ -> z) xs ys
-{-# RULES
-"foldr2/left"   forall k z ys (g::forall b.(a->b->b)->b->b) .
-                  foldr2 k z (build g) ys = g (foldr2_left  k z) (\_ -> z) ys
- #-}
--- There used to be a foldr2/right rule, allowing foldr2 to fuse with a build
--- form on the right. However, this causes trouble if the right list ends in
--- a bottom that is only avoided by the left list ending at that spot. That is,
--- foldr2 f z [a,b,c] (d:e:f:_|_), where the right list is produced by a build
--- form, would cause the foldr2/right rule to introduce bottom. Example:
---
--- zip [1,2,3,4] (unfoldr (\s -> if s > 4 then undefined else Just (s,s+1)) 1)
---
--- should produce
---
--- [(1,1),(2,2),(3,3),(4,4)]
---
--- but with the foldr2/right rule it would instead produce
---
--- (1,1):(2,2):(3,3):(4,4):_|_
-
--- Zips for larger tuples are in the List module.
-
 ----------------------------------------------
 -- | 'zip' takes two lists and returns a list of corresponding pairs.
 -- If one input list is short, excess elements of the longer list are
@@ -869,15 +652,6 @@ zip :: [a] -> [b] -> [(a,b)]
 zip []     _bs    = []
 zip _as    []     = []
 zip (a:as) (b:bs) = (a,b) : zip as bs
-
-{-# INLINE [0] zipFB #-}
-zipFB :: ((a, b) -> c -> d) -> a -> b -> c -> d
-zipFB c = \x y r -> (x,y) `c` r
-
-{-# RULES
-"zip"      [~1] forall xs ys. zip xs ys = build (\c n -> foldr2 (zipFB c) n xs ys)
-"zipList"  [1]  foldr2 (zipFB (:)) []   = zip
- #-}
 
 -- The zipWith family generalises the zip family by zipping with the
 -- function given as the first argument, instead of a tupling function.
@@ -896,17 +670,6 @@ zipWith :: (a->b->c) -> [a]->[b]->[c]
 zipWith _f []     _bs    = []
 zipWith _f _as    []     = []
 zipWith f  (a:as) (b:bs) = f a b : zipWith f as bs
-
--- zipWithFB must have arity 2 since it gets two arguments in the "zipWith"
--- rule; it might not get inlined otherwise
-{-# INLINE [0] zipWithFB #-}
-zipWithFB :: (a -> b -> c) -> (d -> e -> a) -> d -> e -> b -> c
-zipWithFB c f = \x y r -> (x `f` y) `c` r
-
-{-# RULES
-"zipWith"       [~1] forall f xs ys.    zipWith f xs ys = build (\c n -> foldr2 (zipWithFB c f) n xs ys)
-"zipWithList"   [1]  forall f.  foldr2 (zipWithFB (:) f) [] = zipWith f
-  #-}
 
 -- | 'unzip' transforms a list of pairs into a list of first components
 -- and a list of second components.
