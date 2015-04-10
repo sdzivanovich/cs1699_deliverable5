@@ -6,13 +6,13 @@ import Test.QuickCheck.All
 
 data NamedProp a = NamedProp String a 
 
--- Helper function to output a labeled property
+-- Helper function to output a labeled property.
 labeledCheck :: Testable prop => NamedProp prop -> IO ()
 labeledCheck (NamedProp s p) = do
     putStrLn s
     quickCheckWith stdArgs { maxSuccess = 200 } p 
 
--- Haskell doesn't have factorial built in :(
+-- Haskell doesn't have factorial built in. :(
 factorial :: (Integral a) => a -> a
 factorial 0 = 1
 factorial 1 = 1
@@ -20,14 +20,23 @@ factorial n
     | n < 0     = error "n must be nonnegative"
     | otherwise = n * factorial (n - 1)
 
--- dummy predicate for *While functions
+-- dummy predicate for *While functions.
 dummyPredicate :: Int -> Int -> Bool 
 dummyPredicate n = not . (== 0) . (`div` n)
 
--- function to filter keys from association list 
+-- function to filter keys from association list.
 filterKeys :: Eq a => a -> [(a, b)] -> [(a, b)]
 filterKeys x xs =   let keyEquiv a (b, c) = a == b 
                     in  My.filter (not . keyEquiv x) xs
+
+-- helper function to compare the i'th element in a zipped list 
+-- against a pair formed from the i'th elements in two lists. 
+zippedElemEqual :: (Eq a, Eq b, Eq c) => (a -> b -> c) -> [a] -> [b] -> [c] -> Int -> Bool 
+zippedElemEqual f xs ys zs i = f (xs My.!! i) (ys My.!! i) == (zs My.!! i)
+
+-- helper function to generate a pair.
+pair :: a -> b -> (a, b)
+pair x y = (x, y)
 
 -------- (++) properties --------
 
@@ -497,7 +506,7 @@ prop_elemReturnsTrueWhenElementIsInList x xs = x `My.elem` (xs ++ [x])
 -- elem returns false when the element is not in the list.
 prop_elemReturnsFalseWhenElementIsNotInList :: Int -> [Int] -> Bool 
 prop_elemReturnsFalseWhenElementIsNotInList x xs = 
-    let noElems = My.takeWhile ( /= x) xs 
+    let noElems = My.filter ( /= x) xs 
     in  not (x `My.elem` noElems)
 
 -------- notElem properties --------
@@ -520,10 +529,85 @@ prop_lookupGivesJustWhenKeyIsInList x y xs =
         withKey = noKeys ++ [(x, y)]
     in  My.lookup x withKey == Just y 
 
+-------- filter properties --------
+
+-- applying a filter to a filtered list is the same as filtering it once
+prop_filterFilterIsFirstFilter :: [Int] -> Bool
+prop_filterFilterIsFirstFilter xs = 
+    let p = dummyPredicate 8
+        filtered = My.filter p xs 
+    in My.filter p filtered == filtered 
+
+-- if all elements satisfy the predicate, the resulting list is the same as
+-- the original.
+prop_filterDoesNotChangeListIfAllElementsSatisfyPredicate :: [Int] -> Bool 
+prop_filterDoesNotChangeListIfAllElementsSatisfyPredicate xs =
+    let p x = True 
+    in  My.filter p xs == xs
+
+-- if no elements satisfy the predicate, the resulting list is empty.
+prop_filterReturnsEmptyListIfNoElementsSatisfyPredicate :: [Int] -> Bool 
+prop_filterReturnsEmptyListIfNoElementsSatisfyPredicate xs = 
+    let p x = False 
+    in  My.filter p xs == []
+
+-- filter will remove elements that do not satisfy the predicate. 
+prop_filterRemovesElementsThatDoNotSatisfyPredicate :: Int -> Property 
+prop_filterRemovesElementsThatDoNotSatisfyPredicate n = 
+    n > 0   ==> let p = ( > 0)
+                    positive = [1..n]
+                    withNegatives = (0:positive) ++ [0]
+                in  My.filter p withNegatives == positive
+
 -------- !! properties --------
 
+-- indexing into a list with i is the same as dropping the first i elements,
+-- then taking the head of the remaining elements. 
+prop_indexGivesNthElement :: Int -> [Int] -> Property
+prop_indexGivesNthElement i xs = 
+    i >= 0 && i < My.length xs ==> xs My.!! i == (My.head . My.drop i) xs
 
+-------- zip properties --------
 
+-- zipWith should be equivalent to zip with the function pairs two elements.
+prop_zipEquivalentWithZipWith :: [Int] -> [Int] -> Bool 
+prop_zipEquivalentWithZipWith xs ys = My.zipWith pair xs ys == My.zip xs ys 
+
+-------- unzip properties --------
+
+-- unzipping should give back the original two lists, minus any excess elements
+-- (i.e., elements that were discarded from the longer list). 
+prop_unzipGivesOriginalsLessExcessElements :: [Int] -> [Int] -> Bool
+prop_unzipGivesOriginalsLessExcessElements xs ys =
+    let zipped      = My.zip xs ys
+        zippedLen   = My.length zipped 
+        xs'         = My.take zippedLen xs 
+        ys'         = My.take zippedLen ys 
+    in  My.unzip zipped == (xs', ys')
+
+-- verifies general unzip structure. 
+prop_unzipStructure :: [(Int, Int)] -> Bool 
+prop_unzipStructure pairs = 
+    let len         = My.length pairs 
+        (xs, ys)    = My.unzip pairs 
+        zipEquiv    = zippedElemEqual pair xs ys pairs
+    in  My.and . My.map zipEquiv $ [0..len - 1]
+
+-------- zipWith properties --------
+
+-- zip will ignore excess elements in the longer list.
+prop_zipWithDiscardsElementsFromLongerList :: [Int] -> [Int] -> Bool
+prop_zipWithDiscardsElementsFromLongerList xs ys = 
+    My.length (My.zipWith (+) xs ys) == min (My.length xs) (My.length ys)
+
+-- verifies general zipWith structure.
+prop_zipWithStructure :: [Int] -> [Int] -> Bool 
+prop_zipWithStructure xs ys = 
+    let f           = (+)
+        zipped      = My.zipWith f xs ys
+        zippedLen   = My.length zipped 
+        zipEquiv    = zippedElemEqual f xs ys zipped 
+    in  My.and . My.map zipEquiv $ [0..zippedLen - 1]
 
 --------- property execution ---------
 
@@ -621,3 +705,13 @@ main = do
     labeledCheck (NamedProp "prop_notElemIsNegationOfElem" prop_notElemIsNegationOfElem)
     labeledCheck (NamedProp "prop_lookupGivesNothingWhenKeyIsNotInList" prop_lookupGivesNothingWhenKeyIsNotInList)
     labeledCheck (NamedProp "prop_lookupGivesJustWhenKeyIsInList" prop_lookupGivesJustWhenKeyIsInList)
+    labeledCheck (NamedProp "prop_filterFilterIsFirstFilter" prop_filterFilterIsFirstFilter)
+    labeledCheck (NamedProp "prop_filterDoesNotChangeListIfAllElementsSatisfyPredicate" prop_filterDoesNotChangeListIfAllElementsSatisfyPredicate)
+    labeledCheck (NamedProp "prop_filterReturnsEmptyListIfNoElementsSatisfyPredicate" prop_filterReturnsEmptyListIfNoElementsSatisfyPredicate)
+    labeledCheck (NamedProp "prop_filterRemovesElementsThatDoNotSatisfyPredicate" prop_filterRemovesElementsThatDoNotSatisfyPredicate)
+    labeledCheck (NamedProp "prop_indexGivesNthElement" prop_indexGivesNthElement)
+    labeledCheck (NamedProp "prop_zipEquivalentWithZipWith" prop_zipEquivalentWithZipWith)    
+    labeledCheck (NamedProp "prop_unzipGivesOriginalsLessExcessElements" prop_unzipGivesOriginalsLessExcessElements)
+    labeledCheck (NamedProp "prop_unzipStructure" prop_unzipStructure)
+    labeledCheck (NamedProp "prop_zipWithDiscardsElementsFromLongerList" prop_zipWithDiscardsElementsFromLongerList)
+    labeledCheck (NamedProp "prop_zipWithStructure" prop_zipWithStructure)
