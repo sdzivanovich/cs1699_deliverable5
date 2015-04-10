@@ -32,7 +32,7 @@ module MyList (
    span, break, reverse, and, or,
    elem, notElem, lookup,
    concatMap,
-   zip, zip3, zipWith, zipWith3, unzip, unzip3,
+   zip, zipWith, unzip,
    errorEmptyList,
 
  ) where
@@ -879,16 +879,6 @@ zipFB c = \x y r -> (x,y) `c` r
 "zipList"  [1]  foldr2 (zipFB (:)) []   = zip
  #-}
 
-----------------------------------------------
--- | 'zip3' takes three lists and returns a list of triples, analogous to
--- 'zip'.
-zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
--- Specification
--- zip3 =  zipWith3 (,,)
-zip3 (a:as) (b:bs) (c:cs) = (a,b,c) : zip3 as bs cs
-zip3 _      _      _      = []
-
-
 -- The zipWith family generalises the zip family by zipping with the
 -- function given as the first argument, instead of a tupling function.
 
@@ -918,26 +908,11 @@ zipWithFB c f = \x y r -> (x `f` y) `c` r
 "zipWithList"   [1]  forall f.  foldr2 (zipWithFB (:) f) [] = zipWith f
   #-}
 
--- | The 'zipWith3' function takes a function which combines three
--- elements, as well as three lists and returns a list of their point-wise
--- combination, analogous to 'zipWith'.
-zipWith3                :: (a->b->c->d) -> [a]->[b]->[c]->[d]
-zipWith3 z (a:as) (b:bs) (c:cs)
-                        =  z a b c : zipWith3 z as bs cs
-zipWith3 _ _ _ _        =  []
-
 -- | 'unzip' transforms a list of pairs into a list of first components
 -- and a list of second components.
 unzip    :: [(a,b)] -> ([a],[b])
 {-# INLINE unzip #-}
 unzip    =  foldr (\(a,b) ~(as,bs) -> (a:as,b:bs)) ([],[])
-
--- | The 'unzip3' function takes a list of triples and returns three
--- lists, analogous to 'unzip'.
-unzip3   :: [(a,b,c)] -> ([a],[b],[c])
-{-# INLINE unzip3 #-}
-unzip3   =  foldr (\(a,b,c) ~(as,bs,cs) -> (a:as,b:bs,c:cs))
-                  ([],[],[])
 
 --------------------------------------------------------------
 -- Error code
