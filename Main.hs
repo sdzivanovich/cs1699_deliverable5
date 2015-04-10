@@ -422,6 +422,52 @@ prop_lengthOfDropIsLengthLessArgument n xs =
     let len = My.length xs
     in  (My.length . My.drop n) xs == (min len . max 0) (len - n)
 
+-------- splitAt properties --------
+
+-- splitAt is equivalent to using take and drop.
+prop_splitAtEquivalentToTakeAndDrop :: Int -> [Int] -> Bool 
+prop_splitAtEquivalentToTakeAndDrop n xs = My.splitAt n xs == (My.take n xs, My.drop n xs)
+
+-------- dropWhile properties --------
+
+-- first element of a list from dropWhile does not satisfy the predicate.
+prop_firstElementOfDropWhileDoesNotSatisfyPredicate :: [Int] -> Property 
+prop_firstElementOfDropWhileDoesNotSatisfyPredicate xs = 
+    let p = not . (== 0) . (`div` 3)
+        dropped = My.dropWhile p xs 
+    in  (not . null) dropped ==> (not . p . My.head) dropped 
+
+-- dropWhile is what remains after a takeWhile with the same predicate.
+prop_dropWhileIsSuffixAfterTakeWhile :: [Int] -> Bool 
+prop_dropWhileIsSuffixAfterTakeWhile xs = 
+    let p = not . (== 0) . (`div` 3)
+        n = My.length . My.takeWhile p $ xs
+    in  My.dropWhile p xs == My.drop n xs 
+
+-------- takeWhile properties --------
+
+-- everything in a takeWhile satisfies the given predicate.
+prop_allElementsOfTakeWhileSatisfyPredicate :: [Int] -> Bool 
+prop_allElementsOfTakeWhileSatisfyPredicate xs =
+    let p = not . (== 0) . (`div` 3)
+        taken = My.takeWhile p xs 
+    in  all p taken
+
+-- the next element after a takeWhile should not satisfy the predicate.
+prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate :: [Int] -> Property
+prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate xs =
+    let p = not . (== 0) . (`div` 3)
+        taken = My.takeWhile p  xs
+        takenLen = My.length taken
+        leftover = My.drop takenLen xs 
+    in  (not . My.null) leftover ==> (not . p . My.head) leftover  
+
+-------- span properties --------
+
+-------- !! properties --------
+
+
+
 
 --------- property execution ---------
 
@@ -507,3 +553,8 @@ main = do
     labeledCheck (NamedProp "prop_dropGivesOriginalListIfNLessThanZero" prop_dropGivesOriginalListIfNLessThanZero)
     labeledCheck (NamedProp "prop_dropGivesSuffixOfList" prop_dropGivesSuffixOfList)
     labeledCheck (NamedProp "prop_lengthOfDropIsLengthLessArgument" prop_lengthOfDropIsLengthLessArgument)
+    labeledCheck (NamedProp "prop_splitAtEquivalentToTakeAndDrop" prop_splitAtEquivalentToTakeAndDrop)
+    labeledCheck (NamedProp "prop_firstElementOfDropWhileDoesNotSatisfyPredicate" prop_firstElementOfDropWhileDoesNotSatisfyPredicate)
+    labeledCheck (NamedProp "prop_dropWhileIsSuffixAfterTakeWhile" prop_dropWhileIsSuffixAfterTakeWhile)
+    labeledCheck (NamedProp "prop_allElementsOfTakeWhileSatisfyPredicate" prop_allElementsOfTakeWhileSatisfyPredicate)
+    labeledCheck (NamedProp "prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate" prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate)
