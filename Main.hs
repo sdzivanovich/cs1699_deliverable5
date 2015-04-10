@@ -344,11 +344,67 @@ prop_headOfIterateIsOriginal x = (My.head . My.iterate negate) x == x
 
 -- test that iterate repeatedly applies the given function.
 prop_iterateRepeatedApplications :: Int -> Property
-prop_iterateRepeatedApplications n = n > 0 ==> (My.takeWhile ( <= n) . iterate ( + 1)) 0 == [0..n]
+prop_iterateRepeatedApplications n = n > 0 ==> (My.takeWhile ( <= n) . My.iterate ( + 1)) 0 == [0..n]
 
 
---------- 
+--------- repeat properties ---------
 
+-- any element of the repeat list is the repeated element.
+prop_nthElementOfRepeatIsTheOriginalElement :: Int -> Int -> Property 
+prop_nthElementOfRepeatIsTheOriginalElement n x = n >= 0 ==> (My.repeat x My.!! n) == x
+
+--------- replicate properties ---------
+
+-- length of a replicate list is the argument given to replicate.
+prop_replicateLength :: Int -> Int -> Property 
+prop_replicateLength n x = n >= 0 ==> (My.length . My.replicate n) x == n 
+
+-- an element within the length of the replicated list is the replicated element.
+prop_elementOfReplicatedList :: Int -> Int -> Int -> Property 
+prop_elementOfReplicatedList n i x = n >= 0 && i >= 0 && i < n ==> (My.replicate n x !! i) == x
+
+--------- cycle properties ---------
+
+-- first n elements of the cycled list is the original list. 
+prop_firstElementsOfCycledListIsOriginalList :: [Int] -> Bool
+prop_firstElementsOfCycledListIsOriginalList xs = My.take (My.length xs) (My.cycle xs) == xs
+
+-- cycle produces multiple copies of the given list.
+prop_cycleOfListContainsOriginalListMultipleTimes :: Int -> [Int] -> Property 
+prop_cycleOfListContainsOriginalListMultipleTimes n xs = 
+    n >= 0 ==>  let cycledList = My.cycle xs
+                    target = My.concat . (My.replicate n) $ xs 
+                in  My.take (n * My.length xs) cycledList == target
+
+--------- take properties ---------
+
+-- if n is greater than or equal to the length of the list, the result
+-- of a take is the original list.
+prop_takeGivesOriginalListIfNIsAtLeastLengthOfList :: Int -> [Int] -> Property
+prop_takeGivesOriginalListIfNIsAtLeastLengthOfList n xs = 
+    n >= My.length xs ==> My.take n xs == xs
+
+-- if n <= length of the list and n >= 0, length of the result is equal to n.
+prop_lengthOfTakeIsGivenArgument :: Int -> [Int] -> Property
+prop_lengthOfTakeIsGivenArgument n xs = n < My.length xs && n >= 0 ==> (My.length . My.take n) xs == n
+
+-- if n < 0, then result of a take is the empty list.
+prop_takeWithNegativeNGivesEmptyList :: Int -> [Int] -> Property 
+prop_takeWithNegativeNGivesEmptyList n xs = n < 0 ==> My.take n xs == []
+
+-- take gives elements from the front of the list.
+prop_takeGivesFirstElements :: Int -> Int -> Property 
+prop_takeGivesFirstElements i n = i < n && i > 0 && n >= 0 ==> My.take i [0..n] == [0..(i - 1)]
+
+--------- drop properties ---------
+
+
+--------- property execution ---------
+
+-- enumerating each of the properties here is gross and somewhat unmaintainable.
+-- however, an alternate solution would require using Template Haskell or an
+-- external script, since we cannot store lists of these properties due to the
+-- fact that they have differing types.
 main = do
     labeledCheck (NamedProp "prop_appendLength" prop_appendLength)
     labeledCheck (NamedProp "prop_appendRhsEmpty" prop_appendRhsEmpty)
@@ -414,3 +470,12 @@ main = do
     labeledCheck (NamedProp "prop_addingNewMinimum" prop_addingNewMinimum)
     labeledCheck (NamedProp "prop_headOfIterateIsOriginal" prop_headOfIterateIsOriginal)
     labeledCheck (NamedProp "prop_iterateRepeatedApplications" prop_iterateRepeatedApplications)
+    labeledCheck (NamedProp "prop_nthElementOfRepeatIsTheOriginalElement" prop_nthElementOfRepeatIsTheOriginalElement)
+    labeledCheck (NamedProp "prop_replicateLength" prop_replicateLength)
+    labeledCheck (NamedProp "prop_elementOfReplicatedList" prop_elementOfReplicatedList)
+    labeledCheck (NamedProp "prop_firstElementsOfCycledListIsOriginalList" prop_firstElementsOfCycledListIsOriginalList)
+    labeledCheck (NamedProp "prop_cycleOfListContainsOriginalListMultipleTimes" prop_cycleOfListContainsOriginalListMultipleTimes)
+    labeledCheck (NamedProp "prop_takeGivesOriginalListIfNIsAtLeastLengthOfList" prop_takeGivesOriginalListIfNIsAtLeastLengthOfList)
+    labeledCheck (NamedProp "prop_lengthOfTakeIsGivenArgument" prop_lengthOfTakeIsGivenArgument)
+    labeledCheck (NamedProp "prop_takeWithNegativeNGivesEmptyList" prop_takeWithNegativeNGivesEmptyList)
+    labeledCheck (NamedProp "prop_takeGivesFirstElements" prop_takeGivesFirstElements)
