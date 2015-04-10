@@ -6,6 +6,8 @@ import Test.QuickCheck.All
 
 data NamedProp a = NamedProp String a 
 
+---------------- utility functions ----------------
+
 -- Helper function to output a labeled property.
 labeledCheck :: Testable prop => NamedProp prop -> IO ()
 labeledCheck (NamedProp s p) = do
@@ -38,7 +40,19 @@ zippedElemEqual f xs ys zs i = f (xs My.!! i) (ys My.!! i) == (zs My.!! i)
 pair :: a -> b -> (a, b)
 pair x y = (x, y)
 
--------- (++) properties --------
+-- HACK: maximum length allowable for generating subsequences of lists.
+-- ideally, we would modify the random generator to only generate lists
+-- of a certain length or lower.
+maxLenForSubsequences :: Int 
+maxLenForSubsequences = 10
+
+-- HACK: maximum length allowable for generating permutations of lists.
+-- ideally, we would modify the random generator to only generate lists
+-- of a certain length or lower.
+maxLenForPermutations :: Int 
+maxLenForPermutations = 6
+
+---------------- (++) properties ----------------
 
 -- Length of a concatenation is the sum of the length of both pieces.
 prop_appendLength :: [Int] -> [Int] -> Bool 
@@ -58,17 +72,19 @@ prop_appendStructure xs ys =    let n       = My.length xs
                                     (a, b)  = My.splitAt n (xs My.++ ys)
                                 in  a == xs && b == ys
 
--------- head properties --------
-
--- head of a singleton list is the single element.
-prop_headSingleElement :: Int -> Bool
-prop_headSingleElement x = My.head [x] == x 
+---------------- head properties ----------------
 
 -- head of a list is the first element.
 prop_headIsFirstElement :: Int -> [Int] -> Bool 
-prop_headIsFirstElement x xs = head (x:xs) == x
+prop_headIsFirstElement x xs = My.head (x:xs) == x
 
--------- tail properties --------
+---------------- last properties ----------------
+
+-- last of a list is the last element.
+prop_lastIsLastElement :: Int -> [Int] -> Bool 
+prop_lastIsLastElement x xs = My.last (xs ++ [x]) == x
+
+---------------- tail properties ----------------
 
 -- tail of a singleton list is the single element.
 prop_tailSingleElement :: Int -> Bool 
@@ -82,7 +98,7 @@ prop_tailMultipleElements xs = not (My.null xs) ==> My.length (My.tail xs) == My
 prop_tailRemovesFirstElement :: Int -> [Int] -> Bool 
 prop_tailRemovesFirstElement x xs = My.tail (x:xs) == xs 
 
--------- init properties --------
+---------------- init properties ----------------
 
 -- init of a singleton list is the empty list.
 prop_initSingleElement :: Int -> Bool 
@@ -96,7 +112,7 @@ prop_initIsFirstElements xs x = My.init (xs My.++ [x]) == xs
 prop_lengthInitList :: [Int] -> Property 
 prop_lengthInitList xs = not (My.null xs) ==> My.length (My.init xs) == My.length xs - 1
 
--------- uncons properties --------
+---------------- uncons properties ----------------
 
 -- uncons of a an element prepended to a list is a pair containing
 -- that element, and the list.
@@ -107,7 +123,7 @@ prop_unconsStructure x xs = My.uncons (x:xs) == Just (x, xs)
 prop_unconsEmptyList :: Bool
 prop_unconsEmptyList = My.uncons ([] :: [Int]) == Nothing
 
--------- null properties --------
+---------------- null properties ----------------
 
 -- if a list has length > 0, it is not null.
 prop_nonEmptyListsNotNull :: [Int] -> Property 
@@ -117,7 +133,7 @@ prop_nonEmptyListsNotNull xs = My.length xs > 0 ==> not . My.null $ xs
 prop_nonNullListsNotEmpty :: [Int] -> Property
 prop_nonNullListsNotEmpty xs = not (My.null xs) ==> My.length xs > 0
 
--------- length properties --------
+---------------- length properties ----------------
 
 -- length of the empty list is 0.
 prop_lengthEmptyList :: Bool
@@ -132,7 +148,7 @@ prop_lengthSingletonList x = My.length [x] == 1
 prop_addingElementIncreasesLength :: Int -> [Int] -> Bool 
 prop_addingElementIncreasesLength x xs = My.length (x:xs) == My.length xs + 1
 
--------- map properties --------
+---------------- map properties ----------------
 
 -- length of the list produced by a map is equal to length of the original list.
 prop_mappedListLength :: [Int] -> Bool 
@@ -143,7 +159,7 @@ prop_mappedListLength xs = (My.length . My.map show $ xs) == My.length xs
 prop_mapSingletonList :: Int -> Bool 
 prop_mapSingletonList x = My.map show [x] == [show x]
 
--------- reverse properties --------
+---------------- reverse properties ----------------
 
 -- reverse of a reverse of a list is the original list.
 prop_reverseReverseIsOriginal :: [Int] -> Bool 
@@ -159,11 +175,15 @@ prop_reverseIsReverse xs =  let revXs   = My.reverse xs
                                 len     = My.length xs 
                             in  and . My.map (\i -> xs My.!! i == revXs My.!! (len - i - 1)) $ [0..len - 1]
 
--------- intersperse properties --------
+---------------- intersperse properties ----------------
 
--- if result of an intersperse is the same as the original list, original list was empty or singleton.
-prop_intersperseLengthSingletonOrNull :: Int -> [Int] -> Property
-prop_intersperseLengthSingletonOrNull x xs = (My.intersperse x xs == xs) ==> My.null xs || My.length xs == 1
+-- result of an intersperse on a singleton list is the singleton list.
+prop_intersperseSingleton :: Int -> Int -> Bool
+prop_intersperseSingleton x y = My.intersperse x [y] == [y]
+
+-- interspersing on an empty list is the empty list.
+prop_intersperseEmptyList :: Int -> Bool 
+prop_intersperseEmptyList x = My.intersperse x [] == []
 
 -- if a list is non-null and non-singleton, then the length of an intersperse 
 -- is twice the length of the original list, plus one.
@@ -174,44 +194,40 @@ prop_intersperseLengthGeneral x xs = not (My.null xs || My.length xs == 1) ==> M
 prop_intersperseStructure :: Int -> Int -> Int -> Bool 
 prop_intersperseStructure x y z = My.intersperse y [x, z] == [x, y, z]
 
--------- intercalate properties --------
+---------------- intercalate properties ----------------
 
 -- intercalate definition from documentation.
 prop_intercalateIdentity :: [Int] -> [[Int]] -> Bool
 prop_intercalateIdentity x xs = My.intercalate x xs == My.concat (My.intersperse x xs)
 
-
--------- transpose properties --------
-
--- TODO: this fails for [[]]
-prop_transposeTransposeIsOriginal :: [[Int]] -> Bool 
-prop_transposeTransposeIsOriginal xs = (My.transpose . My.transpose $ xs) == xs
-
-
--------- subsequences properties --------
+---------------- subsequences properties ----------------
 
 -- size of the subsequences (power set) of a list with length n is 2 ^ n.
-prop_subsequencesLength :: [Int] -> Bool 
-prop_subsequencesLength xs = My.length (My.subsequences xs) == 2 ^ (My.length xs)
+prop_subsequencesLength :: [Int] -> Property 
+prop_subsequencesLength xs = 
+    My.length xs < maxLenForSubsequences ==> My.length (My.subsequences xs) == 2 ^ (My.length xs)
 
 -- all lists of subsequences contain the empty list.
 prop_subsequencesContainsEmptyList :: [Int] -> Bool 
 prop_subsequencesContainsEmptyList xs = [] `My.elem` My.subsequences xs
 
 -- all lists of subsequences contain the original list.
-prop_subsequencesContainsOriginal:: [Int] -> Bool 
-prop_subsequencesContainsOriginal xs = xs `My.elem` My.subsequences xs
+prop_subsequencesContainsOriginal:: [Int] -> Property 
+prop_subsequencesContainsOriginal xs = 
+    My.length xs < maxLenForSubsequences ==> xs `My.elem` My.subsequences xs
 
 
--------- permutations properties --------
+---------------- permutations properties ----------------
 
 -- size of the set of permutations of a list is the factorial of the length of the list.
-prop_permutationsLength :: [Int] -> Bool 
-prop_permutationsLength xs = My.length (My.permutations xs) == factorial (My.length xs)
+prop_permutationsLength :: [Int] -> Property 
+prop_permutationsLength xs = 
+    My.length xs < maxLenForPermutations ==> My.length (My.permutations xs) == factorial (My.length xs)
 
 -- all sets of permutations contain the original list.
-prop_permutationsContainsOriginal :: [Int] -> Bool 
-prop_permutationsContainsOriginal xs = xs `My.elem` My.permutations xs
+prop_permutationsContainsOriginal :: [Int] -> Property 
+prop_permutationsContainsOriginal xs = 
+    My.length xs < maxLenForPermutations ==> xs `My.elem` My.permutations xs
 
 --TODO
 --prop_permutationsHaveSamePermutations :: [Int] -> Bool 
@@ -219,31 +235,31 @@ prop_permutationsContainsOriginal xs = xs `My.elem` My.permutations xs
 --                                                permsOfPerms = My.map My.permutations perms
 --                                            in My.all ( == perms) permsOfPerms
 
--------- foldl properties --------
+---------------- foldl properties ----------------
 
 -- foldl can reproduce the original list.
 prop_foldlListConstruction :: [Int] -> Bool
 prop_foldlListConstruction xs = My.foldl (\acc x -> acc ++ [x]) [] xs == xs
 
--------- foldl1 properties --------
+---------------- foldl1 properties ----------------
 
 -- foldl1 is equivalent to foldl with a starting identity value. 
 prop_foldl1Equivalence :: [Int] -> Property
 prop_foldl1Equivalence xs = (not . My.null) xs ==> My.foldl1 (+) xs == My.foldl (+) 0 xs
 
--------- foldr properties --------
+---------------- foldr properties ----------------
 
 -- foldr can reproduce the original list.
 prop_foldrListConstruction :: [Int] -> Bool 
 prop_foldrListConstruction xs = My.foldr (:) [] xs == xs
 
--------- foldr1 properties --------
+---------------- foldr1 properties ----------------
 
 -- foldr1 is equivalent to foldr with a starting identity value.
 prop_foldr1Equivalence :: [Int] -> Property 
 prop_foldr1Equivalence xs = (not . My.null) xs ==> My.foldr1 (+) xs == My.foldr (+) 0 xs
 
--------- concat properties --------
+---------------- concat properties ----------------
 
 -- concat of three lists is equivalent to appending the three lists together.
 prop_concatStructure :: [Int] -> [Int] -> [Int] -> Bool
@@ -253,7 +269,7 @@ prop_concatStructure xs ys zs = My.concat [xs, ys, zs] == (xs ++ ys ++ zs)
 prop_concatLength :: [[Int]] -> Bool 
 prop_concatLength xss = (My.length . My.concat) xss == (My.sum . My.map (My.length)) xss 
 
--------- concatMap properties --------
+---------------- concatMap properties ----------------
 
 -- concatMap can reproduce the original list.
 prop_concatMapIdentity :: [Int] -> Bool 
@@ -264,7 +280,7 @@ prop_concatMapIdentity xs = My.concatMap (\x -> [x]) xs == xs
 prop_concatMapLength :: Int -> [Int] -> Property
 prop_concatMapLength n xs = n > 0 ==> (My.length . My.concatMap (My.replicate n)) xs == (My.length xs * n)
 
--------- and properties --------
+---------------- and properties ----------------
 
 -- result of an and is False whenever a False is in the list.
 prop_andWithAFalseIsFalse :: [Bool] -> Bool 
@@ -282,7 +298,7 @@ prop_anyNumberOfTrueIsTrue n = My.and (My.replicate n True) == True
 prop_andOfSingleValueIsItself :: Bool -> Bool 
 prop_andOfSingleValueIsItself b = My.and [b] == b
 
--------- or properties --------
+---------------- or properties ----------------
 
 -- result of an or with a True in the list is True.
 prop_orWithATrueIsTrue :: [Bool] -> Bool 
@@ -300,7 +316,7 @@ prop_anyNumberOfFalseIsFalse n = My.or (My.replicate n False) == False
 prop_orOfSingleValueIsItself :: Bool -> Bool 
 prop_orOfSingleValueIsItself b = My.or [b] == b
 
--------- sum properties --------
+---------------- sum properties ----------------
 
 -- summing a number x repeated n times is n * x.
 prop_sumOfRepeatedNumber :: Int -> Int -> Property 
@@ -310,7 +326,7 @@ prop_sumOfRepeatedNumber n x = n >= 0 ==> My.sum (My.replicate n x) == n * x
 prop_sumOfOneToN :: Int -> Property
 prop_sumOfOneToN n = n > 0 ==> 2 * My.sum ([1..n]) == n * (n + 1)
 
--------- product properties --------
+---------------- product properties ----------------
 
 -- multiplying a number x for n times is x ^ n.
 prop_productOfRepeatedNumber :: Int -> Int -> Property 
@@ -320,7 +336,7 @@ prop_productOfRepeatedNumber n x = n >= 0 ==> My.product (My.replicate n x) == x
 prop_productOfOneToN :: Int -> Property
 prop_productOfOneToN n = n > 0 ==> My.product [1..n] == factorial n 
 
--------- maximum properties --------
+---------------- maximum properties ----------------
 
 -- maximum of a singleton list is the single element.
 prop_maximumSingleton :: Int -> Bool 
@@ -337,7 +353,7 @@ prop_addingNewMaximum xs =
                             newMax = oldMax + 1
                         in  My.maximum (newMax : xs) == newMax
 
--------- minimum properties --------
+---------------- minimum properties ----------------
 
 -- minimum of a singleton list is the single element.
 prop_minimumSingleton :: Int -> Bool 
@@ -354,7 +370,7 @@ prop_addingNewMinimum xs =
                             newMin = oldMin - 1
                         in  My.minimum (newMin : xs) == newMin
 
---------- iterate properties ---------
+----------------- iterate properties -----------------
 
 -- head of an iterate list is the original element.
 prop_headOfIterateIsOriginal :: Int -> Bool
@@ -365,13 +381,13 @@ prop_iterateRepeatedApplications :: Int -> Property
 prop_iterateRepeatedApplications n = n > 0 ==> (My.takeWhile ( <= n) . My.iterate ( + 1)) 0 == [0..n]
 
 
---------- repeat properties ---------
+----------------- repeat properties -----------------
 
 -- any element of the repeat list is the repeated element.
 prop_nthElementOfRepeatIsTheOriginalElement :: Int -> Int -> Property 
 prop_nthElementOfRepeatIsTheOriginalElement n x = n >= 0 ==> (My.repeat x My.!! n) == x
 
---------- replicate properties ---------
+----------------- replicate properties -----------------
 
 -- length of a replicate list is the argument given to replicate.
 prop_replicateLength :: Int -> Int -> Property 
@@ -381,7 +397,7 @@ prop_replicateLength n x = n >= 0 ==> (My.length . My.replicate n) x == n
 prop_elementOfReplicatedList :: Int -> Int -> Int -> Property 
 prop_elementOfReplicatedList n i x = n >= 0 && i >= 0 && i < n ==> (My.replicate n x !! i) == x
 
---------- cycle properties ---------
+----------------- cycle properties -----------------
 
 -- first n elements of the cycled list is the original list. 
 prop_firstElementsOfCycledListIsOriginalList :: [Int] -> Bool
@@ -394,7 +410,7 @@ prop_cycleOfListContainsOriginalListMultipleTimes n xs =
                     target = My.concat . (My.replicate n) $ xs 
                 in  My.take (n * My.length xs) cycledList == target
 
---------- take properties ---------
+----------------- take properties -----------------
 
 -- if n is greater than or equal to the length of the list, the result
 -- of a take is the original list.
@@ -416,7 +432,7 @@ prop_takeWithNegativeNGivesEmptyList n xs = n < 0 ==> My.take n xs == []
 prop_takeGivesFirstElements :: Int -> Int -> Property 
 prop_takeGivesFirstElements i n = i < n && i > 0 && n >= 0 ==> My.take i [0..n] == [0..(i - 1)]
 
---------- drop properties ---------
+----------------- drop properties -----------------
 
 -- if n >= 0, drop should return the empty list.
 prop_dropGivesEmptyListIfNIsBiggerThanListLength :: Int -> [Int] -> Property 
@@ -440,13 +456,13 @@ prop_lengthOfDropIsLengthLessArgument n xs =
     let len = My.length xs
     in  (My.length . My.drop n) xs == (min len . max 0) (len - n)
 
--------- splitAt properties --------
+---------------- splitAt properties ----------------
 
 -- splitAt is equivalent to using take and drop.
 prop_splitAtEquivalentToTakeAndDrop :: Int -> [Int] -> Bool 
 prop_splitAtEquivalentToTakeAndDrop n xs = My.splitAt n xs == (My.take n xs, My.drop n xs)
 
--------- dropWhile properties --------
+---------------- dropWhile properties ----------------
 
 -- first element of a list from dropWhile does not satisfy the predicate.
 prop_firstElementOfDropWhileDoesNotSatisfyPredicate :: [Int] -> Property 
@@ -462,7 +478,7 @@ prop_dropWhileIsSuffixAfterTakeWhile xs =
         n = My.length . My.takeWhile p $ xs
     in  My.dropWhile p xs == My.drop n xs 
 
--------- takeWhile properties --------
+---------------- takeWhile properties ----------------
 
 -- everything in a takeWhile satisfies the given predicate.
 prop_allElementsOfTakeWhileSatisfyPredicate :: [Int] -> Bool 
@@ -480,7 +496,7 @@ prop_nextElementAfterTakeWhileDoesNotSatisfyPredicate xs =
         leftover = My.drop takenLen xs 
     in  (not . My.null) leftover ==> (not . p . My.head) leftover  
 
--------- span properties --------
+---------------- span properties ----------------
 
 -- span p xs is equivalent to (takeWhile p xs, dropWhile p xs). 
 prop_spanIsEquivalentToTakeWhileAndDropWhile :: [Int] -> Bool
@@ -488,7 +504,7 @@ prop_spanIsEquivalentToTakeWhileAndDropWhile xs =
     let p = dummyPredicate 6
     in  My.span p xs == (My.takeWhile p xs, My.dropWhile p xs)
 
--------- break properties --------
+---------------- break properties ----------------
 
 -- break p xs is equivalent to span (not . p) xs. 
 prop_breakIsEquivalentToSpanWithNegatedPredicate :: [Int] -> Bool 
@@ -497,7 +513,7 @@ prop_breakIsEquivalentToSpanWithNegatedPredicate xs =
     in  My.break p xs == My.span (not . p) xs
 
 
--------- elem properties --------
+---------------- elem properties ----------------
 
 -- elem returns true when the element is contained in the list.
 prop_elemReturnsTrueWhenElementIsInList :: Int -> [Int] -> Bool 
@@ -509,12 +525,12 @@ prop_elemReturnsFalseWhenElementIsNotInList x xs =
     let noElems = My.filter ( /= x) xs 
     in  not (x `My.elem` noElems)
 
--------- notElem properties --------
+---------------- notElem properties ----------------
 
 prop_notElemIsNegationOfElem :: Int -> [Int] -> Bool 
 prop_notElemIsNegationOfElem x xs = (x `My.notElem` xs) == not (x `My.elem` xs)
 
--------- lookup properties --------
+---------------- lookup properties ----------------
 
 -- lookup returns Nothing if the key is not found.
 prop_lookupGivesNothingWhenKeyIsNotInList :: Int -> [(Int, Int)] -> Bool 
@@ -529,7 +545,7 @@ prop_lookupGivesJustWhenKeyIsInList x y xs =
         withKey = noKeys ++ [(x, y)]
     in  My.lookup x withKey == Just y 
 
--------- filter properties --------
+---------------- filter properties ----------------
 
 -- applying a filter to a filtered list is the same as filtering it once
 prop_filterFilterIsFirstFilter :: [Int] -> Bool
@@ -559,7 +575,7 @@ prop_filterRemovesElementsThatDoNotSatisfyPredicate n =
                     withNegatives = (0:positive) ++ [0]
                 in  My.filter p withNegatives == positive
 
--------- !! properties --------
+---------------- !! properties ----------------
 
 -- indexing into a list with i is the same as dropping the first i elements,
 -- then taking the head of the remaining elements. 
@@ -567,13 +583,13 @@ prop_indexGivesNthElement :: Int -> [Int] -> Property
 prop_indexGivesNthElement i xs = 
     i >= 0 && i < My.length xs ==> xs My.!! i == (My.head . My.drop i) xs
 
--------- zip properties --------
+---------------- zip properties ----------------
 
 -- zipWith should be equivalent to zip with the function pairs two elements.
 prop_zipEquivalentWithZipWith :: [Int] -> [Int] -> Bool 
 prop_zipEquivalentWithZipWith xs ys = My.zipWith pair xs ys == My.zip xs ys 
 
--------- unzip properties --------
+---------------- unzip properties ----------------
 
 -- unzipping should give back the original two lists, minus any excess elements
 -- (i.e., elements that were discarded from the longer list). 
@@ -593,7 +609,7 @@ prop_unzipStructure pairs =
         zipEquiv    = zippedElemEqual pair xs ys pairs
     in  My.and . My.map zipEquiv $ [0..len - 1]
 
--------- zipWith properties --------
+---------------- zipWith properties ----------------
 
 -- zip will ignore excess elements in the longer list.
 prop_zipWithDiscardsElementsFromLongerList :: [Int] -> [Int] -> Bool
@@ -609,7 +625,7 @@ prop_zipWithStructure xs ys =
         zipEquiv    = zippedElemEqual f xs ys zipped 
     in  My.and . My.map zipEquiv $ [0..zippedLen - 1]
 
---------- property execution ---------
+----------------- property execution -----------------
 
 -- enumerating each of the properties here is gross and somewhat unmaintainable.
 -- however, an alternate solution would require using Template Haskell or an
@@ -620,8 +636,8 @@ main = do
     labeledCheck (NamedProp "prop_appendRhsEmpty" prop_appendRhsEmpty)
     labeledCheck (NamedProp "prop_appendLhsEmpty" prop_appendLhsEmpty)
     labeledCheck (NamedProp "prop_appendStructure" prop_appendStructure)
-    labeledCheck (NamedProp "prop_headSingleElement" prop_headSingleElement)
     labeledCheck (NamedProp "prop_headIsFirstElement" prop_headIsFirstElement)
+    labeledCheck (NamedProp "prop_lastIsLastElement" prop_lastIsLastElement)
     labeledCheck (NamedProp "prop_tailSingleElement" prop_tailSingleElement)
     labeledCheck (NamedProp "prop_tailMultipleElements" prop_tailMultipleElements)
     labeledCheck (NamedProp "prop_tailRemovesFirstElement" prop_tailRemovesFirstElement)
@@ -640,17 +656,16 @@ main = do
     labeledCheck (NamedProp "prop_reverseReverseIsOriginal" prop_reverseReverseIsOriginal)
     labeledCheck (NamedProp "prop_reverseLength" prop_reverseLength)
     labeledCheck (NamedProp "prop_reverseIsReverse" prop_reverseIsReverse)
-    labeledCheck (NamedProp "prop_intersperseLengthSingletonOrNull" prop_intersperseLengthSingletonOrNull)
+    labeledCheck (NamedProp "prop_intersperseSingleton" prop_intersperseSingleton)
+    labeledCheck (NamedProp "prop_intersperseEmptyList" prop_intersperseEmptyList)
     labeledCheck (NamedProp "prop_intersperseLengthGeneral" prop_intersperseLengthGeneral)
     labeledCheck (NamedProp "prop_intersperseStructure" prop_intersperseStructure)
-    labeledCheck (NamedProp "prop_intercalateIdentity" prop_intercalateIdentity)
-    labeledCheck (NamedProp "prop_transposeTransposeIsOriginal" prop_transposeTransposeIsOriginal)
-    -- TODO: constrain length of input somehow
-    --labeledCheck (NamedProp "prop_subsequencesLength" prop_subsequencesLength)
+    labeledCheck (NamedProp "prop_intercalateIdentity" prop_intercalateIdentity)  
+    labeledCheck (NamedProp "prop_subsequencesLength" prop_subsequencesLength)
     labeledCheck (NamedProp "prop_subsequencesContainsEmptyList" prop_subsequencesContainsEmptyList)
-    --labeledCheck (NamedProp "prop_subsequencesContainsOriginal" prop_subsequencesContainsOriginal)
-    --labeledCheck (NamedProp "prop_permutationsLength" prop_permutationsLength)
-    --labeledCheck (NamedProp "prop_permutationsContainsOriginal" prop_permutationsContainsOriginal)
+    labeledCheck (NamedProp "prop_subsequencesContainsOriginal" prop_subsequencesContainsOriginal)
+    labeledCheck (NamedProp "prop_permutationsLength" prop_permutationsLength)
+    labeledCheck (NamedProp "prop_permutationsContainsOriginal" prop_permutationsContainsOriginal)
     --labeledCheck (NamedProp "prop_permutationsHaveSamePermutations" prop_permutationsHaveSamePermutations)
     labeledCheck (NamedProp "prop_foldlListConstruction" prop_foldlListConstruction)
     labeledCheck (NamedProp "prop_foldl1Equivalence" prop_foldl1Equivalence)

@@ -25,7 +25,7 @@ module MyList (
 
    map, (++), filter, concat,
    head, last, tail, init, uncons, null, length, (!!),
-   intersperse, intercalate, transpose, subsequences, permutations,
+   intersperse, intercalate, subsequences, permutations,
    foldl, foldl1, foldr, foldr1,
    iterate, repeat, replicate, cycle,
    take, drop, sum, product, maximum, minimum, splitAt, takeWhile, dropWhile,
@@ -495,20 +495,6 @@ prependToAll sep (x:xs) = sep : x : prependToAll sep xs
 -- result.
 intercalate :: [a] -> [[a]] -> [a]
 intercalate xs xss = concat (intersperse xs xss)
-
--- | The 'transpose' function transposes the rows and columns of its argument.
--- For example,
---
--- > transpose [[1,2,3],[4,5,6]] == [[1,4],[2,5],[3,6]]
---
--- If some of the rows are shorter than the following rows, their elements are skipped:
---
--- > transpose [[10,11],[20],[],[30,31,32]] == [[10,20,30],[11,31],[32]]
-
-transpose               :: [[a]] -> [[a]]
-transpose []             = []
-transpose ([]   : xss)   = transpose xss
-transpose ((x:xs) : xss) = (x : [h | (h:_) <- xss]) : transpose (xs : [ t | (_:t) <- xss])
 
 -- | 'and' returns the conjunction of a Boolean list.  For the result to be
 -- 'True', the list must be finite; 'False', however, results from a 'False'
