@@ -29,8 +29,6 @@ This will run the tests, display their outcomes and the code coverage analysis o
 ### Notes ###
 This project has a dependency on QuickCheck.
 
-`coverage/` contains .html files from running the code analysis on the project (excluding the Main module).
-
 `MyList.hs` contains an abbreviated List module taken from the GHC source of `Data.List`. See the source file for information on the licensing, etc.
 
 `Main.hs` contains the properties for testing `MyList`.
