@@ -2,11 +2,23 @@ module Main where
 
 import qualified MyList as My
 import Test.QuickCheck
-import Test.QuickCheck.All
+import Test.QuickCheck.Monadic
+import Control.Exception (try, evaluate, SomeException)
+import Data.Either
 
 data NamedProp a = NamedProp String a
 
 ---------------- utility functions ----------------
+
+-- adapted from https://gist.github.com/etrepum/d450420a7fd8c2e73aec
+isError :: a -> IO Bool
+isError = fmap isLeft . tryEval
+  where
+    tryEval :: a -> IO (Either SomeException a)
+    tryEval = try . evaluate
+
+expectError :: a -> Property
+expectError exp = monadicIO (run (isError exp) >>= assert)
 
 -- Helper function to output a labeled property.
 labeledCheck :: Testable prop => NamedProp prop -> IO ()
@@ -74,11 +86,19 @@ prop_appendStructure xs ys =    let n       = My.length xs
 prop_headIsFirstElement :: Int -> [Int] -> Bool
 prop_headIsFirstElement x xs = My.head (x:xs) == x
 
+-- head of an empty list is an error.
+prop_headOfEmptyListIsError :: Property
+prop_headOfEmptyListIsError = expectError . My.head $ []
+
 ---------------- last properties ----------------
 
 -- last of a list is the last element.
 prop_lastIsLastElement :: Int -> [Int] -> Bool
 prop_lastIsLastElement x xs = My.last (xs ++ [x]) == x
+
+-- last of an empty list is an error.
+prop_lastOfEmptyListIsError :: Property
+prop_lastOfEmptyListIsError = expectError . My.last $ []
 
 ---------------- tail properties ----------------
 
@@ -94,6 +114,10 @@ prop_tailMultipleElements xs = not (My.null xs) ==> My.length (My.tail xs) == My
 prop_tailRemovesFirstElement :: Int -> [Int] -> Bool
 prop_tailRemovesFirstElement x xs = My.tail (x:xs) == xs
 
+-- tail of an empty list is an error.
+prop_tailOfEmptyListIsError :: Property
+prop_tailOfEmptyListIsError = expectError . My.tail $ []
+
 ---------------- init properties ----------------
 
 -- init of a singleton list is the empty list.
@@ -103,6 +127,10 @@ prop_initSingleElement x = My.init [x] == []
 -- init of a list is everything except for the last element.
 prop_initIsFirstElements :: [Int] -> Int -> Bool
 prop_initIsFirstElements xs x = My.init (xs My.++ [x]) == xs
+
+-- init of an empty list is an error.
+prop_initOfEmptyListIsError :: Property
+prop_initOfEmptyListIsError = expectError . My.init $ []
 
 -- length of the init of a list is equal to the length of the list minus 1.
 prop_lengthInitList :: [Int] -> Property
@@ -246,6 +274,10 @@ prop_foldlListConstruction xs = My.foldl (\acc x -> acc ++ [x]) [] xs == xs
 prop_foldl1Equivalence :: [Int] -> Property
 prop_foldl1Equivalence xs = (not . My.null) xs ==> My.foldl1 (+) xs == My.foldl (+) 0 xs
 
+-- foldl1 on an empty list is an error.
+prop_foldl1OnEmptyListIsError :: Property
+prop_foldl1OnEmptyListIsError = expectError . My.foldl1 (+) $ []
+
 ---------------- foldr properties ----------------
 
 -- foldr can reproduce the original list.
@@ -257,6 +289,10 @@ prop_foldrListConstruction xs = My.foldr (:) [] xs == xs
 -- foldr1 is equivalent to foldr with a starting identity value.
 prop_foldr1Equivalence :: [Int] -> Property
 prop_foldr1Equivalence xs = (not . My.null) xs ==> My.foldr1 (+) xs == My.foldr (+) 0 xs
+
+-- foldr1 on an empty list is an error.
+prop_foldr1OnEmptyListIsError :: Property
+prop_foldr1OnEmptyListIsError = expectError . My.foldr1 (+) $ []
 
 ---------------- concat properties ----------------
 
@@ -352,6 +388,10 @@ prop_addingNewMaximum xs =
                             newMax = oldMax + 1
                         in  My.maximum (newMax : xs) == newMax
 
+-- maximum on an empty list is an error.
+prop_maximumOnEmptyListIsError :: Property
+prop_maximumOnEmptyListIsError = expectError . My.maximum $ ([] :: [Int])
+
 ---------------- minimum properties ----------------
 
 -- minimum of a singleton list is the single element.
@@ -368,6 +408,10 @@ prop_addingNewMinimum xs =
     (not . null) xs ==> let oldMin = My.minimum xs
                             newMin = oldMin - 1
                         in  My.minimum (newMin : xs) == newMin
+
+-- minimum on an empty list is an error.
+prop_minimumOnEmptyListIsError :: Property
+prop_minimumOnEmptyListIsError = expectError . My.minimum $ ([] :: [Int])
 
 ----------------- iterate properties -----------------
 
@@ -408,6 +452,10 @@ prop_cycleOfListContainsOriginalListMultipleTimes n xs =
     n >= 0 ==>  let cycledList = My.cycle xs
                     target = My.concat . (My.replicate n) $ xs
                 in  My.take (n * My.length xs) cycledList == target
+
+-- cycle on an empty list is an error.
+prop_cycleOnEmptyListIsError :: Property
+prop_cycleOnEmptyListIsError = expectError . My.cycle $ []
 
 ----------------- take properties -----------------
 
@@ -575,6 +623,17 @@ prop_indexGivesNthElement :: Int -> [Int] -> Property
 prop_indexGivesNthElement i xs =
     i >= 0 && i < My.length xs ==> xs My.!! i == (My.head . My.drop i) xs
 
+-- indexing beyond the length of the list is an error.
+prop_indexBeyondLengthOfListIsError :: Int -> [Int] -> Property
+prop_indexBeyondLengthOfListIsError i xs =
+    i >= 0 ==> expectError (xs My.!! (i + My.length xs))
+
+-- indexing with a negative value yields an error.
+prop_negativeIndexIsError :: Int -> [Int] -> Property
+prop_negativeIndexIsError i xs =
+    let i' = if i >= 0 then (negate i) - 1 else i
+    in  expectError (xs My.!! i')
+
 ---------------- zip properties ----------------
 
 -- zipWith should be equivalent to zip with the function pairs two elements.
@@ -664,12 +723,16 @@ main = do
     labeledCheck (NamedProp "prop_appendLhsEmpty" prop_appendLhsEmpty)
     labeledCheck (NamedProp "prop_appendStructure" prop_appendStructure)
     labeledCheck (NamedProp "prop_headIsFirstElement" prop_headIsFirstElement)
+    labeledCheck (NamedProp "prop_headOfEmptyListIsError" prop_headOfEmptyListIsError)
     labeledCheck (NamedProp "prop_lastIsLastElement" prop_lastIsLastElement)
+    labeledCheck (NamedProp "prop_lastOfEmptyListIsError" prop_lastOfEmptyListIsError)
     labeledCheck (NamedProp "prop_tailSingleElement" prop_tailSingleElement)
     labeledCheck (NamedProp "prop_tailMultipleElements" prop_tailMultipleElements)
     labeledCheck (NamedProp "prop_tailRemovesFirstElement" prop_tailRemovesFirstElement)
+    labeledCheck (NamedProp "prop_tailOfEmptyListIsError" prop_tailOfEmptyListIsError)
     labeledCheck (NamedProp "prop_initSingleElement" prop_initSingleElement)
     labeledCheck (NamedProp "prop_initIsFirstElements" prop_initIsFirstElements)
+    labeledCheck (NamedProp "prop_initOfEmptyListIsError" prop_initOfEmptyListIsError)
     labeledCheck (NamedProp "prop_lengthInitList" prop_lengthInitList)
     labeledCheck (NamedProp "prop_unconsStructure" prop_unconsStructure)
     labeledCheck (NamedProp "prop_unconsEmptyList" prop_unconsEmptyList)
@@ -696,8 +759,10 @@ main = do
     labeledCheck (NamedProp "prop_permutationsHaveSamePermutations" prop_permutationsHaveSamePermutations)
     labeledCheck (NamedProp "prop_foldlListConstruction" prop_foldlListConstruction)
     labeledCheck (NamedProp "prop_foldl1Equivalence" prop_foldl1Equivalence)
+    labeledCheck (NamedProp "prop_foldl1OnEmptyListIsError" prop_foldl1OnEmptyListIsError)
     labeledCheck (NamedProp "prop_foldrListConstruction" prop_foldrListConstruction)
     labeledCheck (NamedProp "prop_foldr1Equivalence" prop_foldr1Equivalence)
+    labeledCheck (NamedProp "prop_foldr1OnEmptyListIsError" prop_foldr1OnEmptyListIsError)
     labeledCheck (NamedProp "prop_concatStructure" prop_concatStructure)
     labeledCheck (NamedProp "prop_concatLength" prop_concatLength)
     labeledCheck (NamedProp "prop_concatMapIdentity" prop_concatMapIdentity)
@@ -717,9 +782,11 @@ main = do
     labeledCheck (NamedProp "prop_maximumSingleton" prop_maximumSingleton)
     labeledCheck (NamedProp "prop_maximumOfTwoElements" prop_maximumOfTwoElements)
     labeledCheck (NamedProp "prop_addingNewMaximum" prop_addingNewMaximum)
+    labeledCheck (NamedProp "prop_maximumOnEmptyListIsError" prop_maximumOnEmptyListIsError)
     labeledCheck (NamedProp "prop_minimumSingleton" prop_minimumSingleton)
     labeledCheck (NamedProp "prop_minimumOfTwoElements" prop_minimumOfTwoElements)
     labeledCheck (NamedProp "prop_addingNewMinimum" prop_addingNewMinimum)
+    labeledCheck (NamedProp "prop_minimumOnEmptyListIsError" prop_minimumOnEmptyListIsError)
     labeledCheck (NamedProp "prop_headOfIterateIsOriginal" prop_headOfIterateIsOriginal)
     labeledCheck (NamedProp "prop_iterateRepeatedApplications" prop_iterateRepeatedApplications)
     labeledCheck (NamedProp "prop_nthElementOfRepeatIsTheOriginalElement" prop_nthElementOfRepeatIsTheOriginalElement)
@@ -727,6 +794,7 @@ main = do
     labeledCheck (NamedProp "prop_elementOfReplicatedList" prop_elementOfReplicatedList)
     labeledCheck (NamedProp "prop_firstElementsOfCycledListIsOriginalList" prop_firstElementsOfCycledListIsOriginalList)
     labeledCheck (NamedProp "prop_cycleOfListContainsOriginalListMultipleTimes" prop_cycleOfListContainsOriginalListMultipleTimes)
+    labeledCheck (NamedProp "prop_cycleOnEmptyListIsError" prop_cycleOnEmptyListIsError)
     labeledCheck (NamedProp "prop_takeGivesOriginalListIfNIsAtLeastLengthOfList" prop_takeGivesOriginalListIfNIsAtLeastLengthOfList)
     labeledCheck (NamedProp "prop_lengthOfTakeIsGivenArgument" prop_lengthOfTakeIsGivenArgument)
     labeledCheck (NamedProp "prop_takeWithNegativeNGivesEmptyList" prop_takeWithNegativeNGivesEmptyList)
@@ -752,6 +820,8 @@ main = do
     labeledCheck (NamedProp "prop_filterReturnsEmptyListIfNoElementsSatisfyPredicate" prop_filterReturnsEmptyListIfNoElementsSatisfyPredicate)
     labeledCheck (NamedProp "prop_filterRemovesElementsThatDoNotSatisfyPredicate" prop_filterRemovesElementsThatDoNotSatisfyPredicate)
     labeledCheck (NamedProp "prop_indexGivesNthElement" prop_indexGivesNthElement)
+    labeledCheck (NamedProp "prop_indexBeyondLengthOfListIsError" prop_indexBeyondLengthOfListIsError)
+    labeledCheck (NamedProp "prop_negativeIndexIsError" prop_negativeIndexIsError)
     labeledCheck (NamedProp "prop_zipEquivalentWithZipWith" prop_zipEquivalentWithZipWith)
     labeledCheck (NamedProp "prop_unzipGivesOriginalsLessExcessElements" prop_unzipGivesOriginalsLessExcessElements)
     labeledCheck (NamedProp "prop_unzipStructure" prop_unzipStructure)
