@@ -625,7 +625,7 @@ isSorted :: (Ord a) => [a] -> Bool
 isSorted []             = True
 isSorted (x:[])         = True
 isSorted (x:xs@(y:ys))
-    | x < y     = isSorted xs
+    | x <= y     = isSorted xs
     | otherwise = False
 
 -- a sorted list should be...sorted.
