@@ -32,8 +32,7 @@ module MyList (
    span, break, reverse, and, or,
    elem, notElem, lookup,
    concatMap,
-   zip, zipWith, unzip,
-   errorEmptyList, sort
+   zip, zipWith, unzip, sort
 
  ) where
 
